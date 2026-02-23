@@ -1,0 +1,1 @@
+"""CPU-optimized embedding engine."""

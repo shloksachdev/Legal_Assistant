@@ -1,0 +1,82 @@
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+venv/
+.venv/
+env/
+ENV/
+
+# Local databases and cache
+kuzu_data/
+
+# Environment files (keep example)
+.env
+.env.*
+!.env.example
+
+# VSCode / editor
+.vscode/
+.idea/
+*.swp
+
+# Python test / coverage
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Node / Next.js
+frontend/node_modules/
+frontend/.next/
+frontend/.turbo/
+frontend/dist/
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# KuzuDB data
+kuzu_data/
+
+# Environment variables
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+
+# Testing
+.pytest_cache/
+htmlcov/
+.coverage

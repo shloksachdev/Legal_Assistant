@@ -1,0 +1,103 @@
+{
+  "metadata": {
+    "description": "Seed data: Brazilian Constitution Article 6 — Social Rights amendment chain",
+    "source": "Brazilian Federal Constitution (1988), Constitutional Amendments No. 26/2000, 64/2010, 90/2015"
+  },
+  "works": [
+    {
+      "work_id": "BR-CF88",
+      "title": "Federal Constitution of Brazil, 1988",
+      "jurisdiction": "Brazil",
+      "work_type": "constitution",
+      "parent_work_id": null
+    },
+    {
+      "work_id": "BR-CF88-T2",
+      "title": "Title II — Fundamental Rights and Guarantees",
+      "jurisdiction": "Brazil",
+      "work_type": "title",
+      "parent_work_id": "BR-CF88"
+    },
+    {
+      "work_id": "BR-CF88-T2-C2",
+      "title": "Chapter II — Social Rights",
+      "jurisdiction": "Brazil",
+      "work_type": "chapter",
+      "parent_work_id": "BR-CF88-T2"
+    },
+    {
+      "work_id": "BR-CF88-ART6",
+      "title": "Article 6 — Social Rights",
+      "jurisdiction": "Brazil",
+      "work_type": "article",
+      "parent_work_id": "BR-CF88-T2-C2"
+    }
+  ],
+  "expressions": [
+    {
+      "expr_id": "BR-ART6-v1",
+      "work_id": "BR-CF88-ART6",
+      "text_content": "Art. 6. São direitos sociais a educação, a saúde, o trabalho, o lazer, a segurança, a previdência social, a proteção à maternidade e à infância, a assistência aos desamparados, na forma desta Constituição. (Art. 6. Social rights are education, health, work, leisure, security, social security, protection of maternity and childhood, assistance to the destitute, as provided by this Constitution.)",
+      "valid_from": "1988-10-05",
+      "valid_to": "2000-02-14"
+    },
+    {
+      "expr_id": "BR-ART6-v2",
+      "work_id": "BR-CF88-ART6",
+      "text_content": "Art. 6. São direitos sociais a educação, a saúde, o trabalho, a moradia, o lazer, a segurança, a previdência social, a proteção à maternidade e à infância, a assistência aos desamparados, na forma desta Constituição. (Art. 6. Social rights are education, health, work, housing, leisure, security, social security, protection of maternity and childhood, assistance to the destitute, as provided by this Constitution.)",
+      "valid_from": "2000-02-14",
+      "valid_to": "2010-02-04"
+    },
+    {
+      "expr_id": "BR-ART6-v3",
+      "work_id": "BR-CF88-ART6",
+      "text_content": "Art. 6. São direitos sociais a educação, a saúde, a alimentação, o trabalho, a moradia, o lazer, a segurança, a previdência social, a proteção à maternidade e à infância, a assistência aos desamparados, na forma desta Constituição. (Art. 6. Social rights are education, health, food, work, housing, leisure, security, social security, protection of maternity and childhood, assistance to the destitute, as provided by this Constitution.)",
+      "valid_from": "2010-02-04",
+      "valid_to": "2015-09-15"
+    },
+    {
+      "expr_id": "BR-ART6-v4",
+      "work_id": "BR-CF88-ART6",
+      "text_content": "Art. 6. São direitos sociais a educação, a saúde, a alimentação, o trabalho, a moradia, o transporte, o lazer, a segurança, a previdência social, a proteção à maternidade e à infância, a assistência aos desamparados, na forma desta Constituição. (Art. 6. Social rights are education, health, food, work, housing, transportation, leisure, security, social security, protection of maternity and childhood, assistance to the destitute, as provided by this Constitution.)",
+      "valid_from": "2015-09-15",
+      "valid_to": null
+    }
+  ],
+  "actions": [
+    {
+      "action_id": "ACT-BR-CF88-PROMULGATE",
+      "action_type": "enact",
+      "description": "Promulgation of the Federal Constitution of Brazil, 1988",
+      "effective_date": "1988-10-05",
+      "source_ref": "Constituição da República Federativa do Brasil de 1988",
+      "initiates": ["BR-ART6-v1"]
+    },
+    {
+      "action_id": "ACT-BR-EC26-2000",
+      "action_type": "amend",
+      "description": "Constitutional Amendment No. 26, of February 14, 2000 — Added 'housing' (moradia) to the list of social rights in Article 6",
+      "effective_date": "2000-02-14",
+      "source_ref": "Emenda Constitucional nº 26, de 14 de fevereiro de 2000",
+      "terminates": ["BR-ART6-v1"],
+      "initiates": ["BR-ART6-v2"]
+    },
+    {
+      "action_id": "ACT-BR-EC64-2010",
+      "action_type": "amend",
+      "description": "Constitutional Amendment No. 64, of February 4, 2010 — Added 'food' (alimentação) to the list of social rights in Article 6",
+      "effective_date": "2010-02-04",
+      "source_ref": "Emenda Constitucional nº 64, de 4 de fevereiro de 2010",
+      "terminates": ["BR-ART6-v2"],
+      "initiates": ["BR-ART6-v3"]
+    },
+    {
+      "action_id": "ACT-BR-EC90-2015",
+      "action_type": "amend",
+      "description": "Constitutional Amendment No. 90, of September 15, 2015 — Added 'transportation' (transporte) to the list of social rights in Article 6",
+      "effective_date": "2015-09-15",
+      "source_ref": "Emenda Constitucional nº 90, de 15 de setembro de 2015",
+      "terminates": ["BR-ART6-v3"],
+      "initiates": ["BR-ART6-v4"]
+    }
+  ]
+}

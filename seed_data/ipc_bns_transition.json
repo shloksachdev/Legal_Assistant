@@ -1,0 +1,166 @@
+{
+  "metadata": {
+    "description": "Seed data: Indian Penal Code (1860) to Bharatiya Nyaya Sanhita (2023) transition",
+    "transition_date": "2024-07-01",
+    "source": "Indian Parliament, The Bharatiya Nyaya Sanhita, 2023 (Act No. 45 of 2023)"
+  },
+  "works": [
+    {
+      "work_id": "IPC",
+      "title": "Indian Penal Code, 1860",
+      "jurisdiction": "India",
+      "work_type": "statute",
+      "parent_work_id": null
+    },
+    {
+      "work_id": "IPC-124A",
+      "title": "Section 124A - Sedition",
+      "jurisdiction": "India",
+      "work_type": "section",
+      "parent_work_id": "IPC"
+    },
+    {
+      "work_id": "IPC-302",
+      "title": "Section 302 - Punishment for murder",
+      "jurisdiction": "India",
+      "work_type": "section",
+      "parent_work_id": "IPC"
+    },
+    {
+      "work_id": "IPC-376",
+      "title": "Section 376 - Punishment for rape",
+      "jurisdiction": "India",
+      "work_type": "section",
+      "parent_work_id": "IPC"
+    },
+    {
+      "work_id": "BNS",
+      "title": "Bharatiya Nyaya Sanhita, 2023",
+      "jurisdiction": "India",
+      "work_type": "statute",
+      "parent_work_id": null
+    },
+    {
+      "work_id": "BNS-103",
+      "title": "Section 103 - Punishment for murder",
+      "jurisdiction": "India",
+      "work_type": "section",
+      "parent_work_id": "BNS"
+    },
+    {
+      "work_id": "BNS-63",
+      "title": "Section 63 - Punishment for rape",
+      "jurisdiction": "India",
+      "work_type": "section",
+      "parent_work_id": "BNS"
+    },
+    {
+      "work_id": "BNS-111",
+      "title": "Section 111 - Organised crime",
+      "jurisdiction": "India",
+      "work_type": "section",
+      "parent_work_id": "BNS"
+    },
+    {
+      "work_id": "BNS-113",
+      "title": "Section 113 - Terrorist act",
+      "jurisdiction": "India",
+      "work_type": "section",
+      "parent_work_id": "BNS"
+    }
+  ],
+  "expressions": [
+    {
+      "expr_id": "IPC-124A-v1",
+      "work_id": "IPC-124A",
+      "text_content": "Section 124A - Sedition: Whoever by words, either spoken or written, or by signs, or by visible representation, or otherwise, brings or attempts to bring into hatred or contempt, or excites or attempts to excite disaffection towards the Government established by law in India, shall be punished with imprisonment for life, to which fine may be added, or with imprisonment which may extend to three years, to which fine may be added, or with fine.",
+      "valid_from": "1870-01-01",
+      "valid_to": "2024-07-01"
+    },
+    {
+      "expr_id": "IPC-302-v1",
+      "work_id": "IPC-302",
+      "text_content": "Section 302 - Punishment for murder: Whoever commits murder shall be punished with death, or imprisonment for life, and shall also be liable to fine.",
+      "valid_from": "1860-10-06",
+      "valid_to": "2024-07-01"
+    },
+    {
+      "expr_id": "IPC-376-v1",
+      "work_id": "IPC-376",
+      "text_content": "Section 376 - Punishment for rape: (1) Whoever, except in the cases provided for in sub-section (2), commits rape, shall be punished with rigorous imprisonment of either description for a term which shall not be less than seven years, but which may extend to imprisonment for life, and shall also be liable to fine. (2) Whoever commits rape on a woman under sixteen years of age shall be punished with rigorous imprisonment for a term which shall not be less than ten years but which may extend to imprisonment for life and shall also be liable to fine.",
+      "valid_from": "1860-10-06",
+      "valid_to": "2013-04-02"
+    },
+    {
+      "expr_id": "IPC-376-v2",
+      "work_id": "IPC-376",
+      "text_content": "Section 376 - Punishment for rape (as amended by Criminal Law Amendment Act, 2013): (1) Whoever, except in the cases provided for in sub-section (2), commits rape, shall be punished with rigorous imprisonment of either description for a term which shall not be less than ten years, but which may extend to imprisonment for life, and shall also be liable to fine. (2) Whoever commits an offence punishable under sub-section (1) with aggravating circumstances including being a police officer, public servant, member of armed forces, or a person in a position of trust or authority, shall be punished with rigorous imprisonment for a term which shall not be less than ten years but which may extend to imprisonment for life which shall mean imprisonment for the remainder of that person's natural life, and shall also be liable to fine.",
+      "valid_from": "2013-04-02",
+      "valid_to": "2024-07-01"
+    },
+    {
+      "expr_id": "BNS-103-v1",
+      "work_id": "BNS-103",
+      "text_content": "Section 103 - Murder: (1) Whoever commits murder shall be punished with death or imprisonment for life, and shall also be liable to fine. (2) When a group of five or more persons acting in concert commits murder on the ground of race, caste or community, sex, place of birth, language, personal belief or any other similar ground each member of such group shall be punished with death or with imprisonment for life, and shall also be liable to fine.",
+      "valid_from": "2024-07-01",
+      "valid_to": null
+    },
+    {
+      "expr_id": "BNS-63-v1",
+      "work_id": "BNS-63",
+      "text_content": "Section 63 - Rape: (1) Whoever commits rape shall be punished with rigorous imprisonment of either description for a term which shall not be less than ten years but which may extend to imprisonment for life, and shall also be liable to fine. (2) Whoever commits an offence under sub-section (1) in aggravating circumstances, including being a police officer, public servant, member of armed forces, person in position of trust, relative or guardian, or during communal or sectarian violence, shall be punished with rigorous imprisonment for a term which shall not be less than ten years but which may extend to imprisonment for life which shall mean the remainder of natural life and shall also be liable to fine. The definition now explicitly includes acts of digital penetration as a form of penetrative sexual assault.",
+      "valid_from": "2024-07-01",
+      "valid_to": null
+    },
+    {
+      "expr_id": "BNS-111-v1",
+      "work_id": "BNS-111",
+      "text_content": "Section 111 - Organised crime: (1) Any continuing unlawful activity including kidnapping, robbery, vehicle theft, extortion, land grabbing, contract killing, economic offence, cyber-crimes having severe consequences, trafficking of persons, drugs, weapons, illicit goods or services, and human trafficking for prostitution or ransom, by any person or a group of persons acting in concert, singly or jointly, either as a member of an organised crime syndicate or on behalf of such syndicate, by use of violence, threat of violence, intimidation, coercion, or by any other unlawful means to obtain direct or indirect material benefit including a financial benefit, shall constitute organised crime. (2) Whoever commits organised crime shall be punished with imprisonment for a term which shall not be less than five years but which may extend to imprisonment for life, and shall also be liable to fine which shall not be less than five lakh rupees.",
+      "valid_from": "2024-07-01",
+      "valid_to": null
+    },
+    {
+      "expr_id": "BNS-113-v1",
+      "work_id": "BNS-113",
+      "text_content": "Section 113 - Terrorist act: (1) Whoever does any act with the intent to threaten or likely to threaten the unity, integrity, sovereignty, security, or economic security of India, or with the intent to strike terror or likely to strike terror in the people or any section of the people in India or in any foreign country, by using bombs, dynamite or other explosive substances or inflammable substances or firearms or other lethal weapons or poisonous or noxious gases or other chemicals or by any other substances, whether biological, radioactive, nuclear or otherwise, of a hazardous nature or by any other means of whatever nature, to cause or likely to cause death of, or injuries to, any person or persons, damage to or destruction of property, disruption of any supplies or services essential to the life of the community in India, or causes damage or destruction of any property in India or in a foreign country, commits a terrorist act. (2) Whoever commits a terrorist act shall, if such act has resulted in the death of any person, be punished with death or imprisonment for life, and shall also be liable to fine.",
+      "valid_from": "2024-07-01",
+      "valid_to": null
+    }
+  ],
+  "actions": [
+    {
+      "action_id": "ACT-IPC-ENACT",
+      "action_type": "enact",
+      "description": "Enactment of the Indian Penal Code, 1860 by the Legislative Council of India",
+      "effective_date": "1860-10-06",
+      "source_ref": "Act XLV of 1860",
+      "initiates": ["IPC-302-v1", "IPC-376-v1"]
+    },
+    {
+      "action_id": "ACT-IPC-124A-INSERT",
+      "action_type": "amend",
+      "description": "Insertion of Section 124A (Sedition) into the Indian Penal Code by Act No. XXVII of 1870",
+      "effective_date": "1870-01-01",
+      "source_ref": "Indian Penal Code (Amendment) Act, 1870",
+      "initiates": ["IPC-124A-v1"]
+    },
+    {
+      "action_id": "ACT-CLA-2013",
+      "action_type": "amend",
+      "description": "Criminal Law (Amendment) Act, 2013 — Expanded rape definitions and increased minimum punishments following the Nirbhaya case",
+      "effective_date": "2013-04-02",
+      "source_ref": "Criminal Law (Amendment) Act, 2013 (Act No. 13 of 2013)",
+      "terminates": ["IPC-376-v1"],
+      "initiates": ["IPC-376-v2"]
+    },
+    {
+      "action_id": "ACT-BNS-2024",
+      "action_type": "replace",
+      "description": "Enforcement of the Bharatiya Nyaya Sanhita, 2023 — Complete replacement of the Indian Penal Code, 1860. Sedition repealed. Organized crime and terrorist acts incorporated directly. Rape provisions expanded with digital penetration.",
+      "effective_date": "2024-07-01",
+      "source_ref": "Bharatiya Nyaya Sanhita, 2023 (Act No. 45 of 2023)",
+      "terminates": ["IPC-124A-v1", "IPC-302-v1", "IPC-376-v2"],
+      "initiates": ["BNS-103-v1", "BNS-63-v1", "BNS-111-v1", "BNS-113-v1"]
+    }
+  ]
+}
