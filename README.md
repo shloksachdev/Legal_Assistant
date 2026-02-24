@@ -17,6 +17,12 @@ User Query → LLM Query Planner (Gemini Flash)
            → Provenance-Backed Legal Analysis
 ```
 
+## UI Preview
+
+Main chat interface (TempLex GraphRAG):
+
+![TempLex GraphRAG UI](./frontend/public/ui-overview.png)
+
 ## Tech Stack
 
 | Layer        | Technology                       | Role                                  |
