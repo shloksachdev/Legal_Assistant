@@ -229,10 +229,43 @@ export default function Home() {
   };
 
   const handleNewChat = () => {
+    if (isLoading) return; // avoid switching sessions mid-response
     createSession();
   };
 
+  const handleDeleteChat = (id: string) => {
+    if (isLoading) return;
+
+    setChatSummaries((prev) => {
+      const next = prev.filter((c) => c.id !== id);
+      persistSummaries(next);
+      return next;
+    });
+
+    if (typeof window !== "undefined") {
+      try {
+        window.localStorage.removeItem(`${STORAGE_KEY_PREFIX}${id}`);
+      } catch {
+        // ignore
+      }
+    }
+
+    // If we deleted the active chat, switch to another one or clear
+    if (id === sessionId) {
+      const remaining = chatSummaries.filter((c) => c.id !== id);
+      if (remaining.length > 0) {
+        const nextId = remaining[0].id;
+        setSessionId(nextId);
+        const stored = loadMessagesForSession(nextId);
+        setMessages(stored);
+      } else {
+        setSessionId(null);
+        setMessages([]);
+      }
+    }
+  };
   const handleSelectChat = (id: string) => {
+    if (isLoading) return; // prevent overlapping responses when switching
     setSessionId(id);
     const stored = loadMessagesForSession(id);
     setMessages(stored);
@@ -271,7 +304,12 @@ export default function Home() {
           <span className="badge badge-blue" style={{ fontSize: "10px" }}>LangChain</span>
           <span className="badge badge-green" style={{ fontSize: "10px" }}>ReAct</span>
 
-          <button onClick={handleNewChat} className="btn-secondary" style={{ fontSize: "11px", padding: "4px 10px", marginLeft: "8px" }}>
+          <button
+            onClick={handleNewChat}
+            className="btn-secondary"
+            style={{ fontSize: "11px", padding: "4px 10px", marginLeft: "8px" }}
+            disabled={isLoading}
+          >
             + New Chat
           </button>
 
@@ -351,6 +389,7 @@ export default function Home() {
                   onClick={handleNewChat}
                   className="btn-secondary"
                   style={{ fontSize: "10px", padding: "2px 8px" }}
+                  disabled={isLoading}
                 >
                   + New
                 </button>
@@ -373,20 +412,42 @@ export default function Home() {
                           padding: "6px 8px",
                           border: "1px solid " + (isActive ? "var(--accent-blue)" : "var(--border-muted)"),
                           background: isActive ? "var(--accent-blue-muted)" : "var(--bg-canvas)",
-                          cursor: "pointer",
+                          cursor: isLoading ? "not-allowed" : "pointer",
                           fontSize: "11px",
                           color: "var(--text-secondary)",
+                          opacity: isLoading ? 0.6 : 1,
                         }}
+                        disabled={isLoading}
                       >
-                        <div
-                          style={{
-                            whiteSpace: "nowrap",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            marginBottom: "2px",
-                          }}
-                        >
-                          {chat.title || "Untitled chat"}
+                        <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                          <div
+                            style={{
+                              flex: 1,
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              marginBottom: "2px",
+                            }}
+                          >
+                            {chat.title || "Untitled chat"}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteChat(chat.id);
+                            }}
+                            style={{
+                              border: "none",
+                              background: "transparent",
+                              color: "var(--text-muted)",
+                              cursor: "pointer",
+                              fontSize: "12px",
+                            }}
+                            disabled={isLoading}
+                          >
+                            ✕
+                          </button>
                         </div>
                         <div style={{ fontSize: "10px", color: "var(--text-muted)" }}>
                           {new Date(chat.updatedAt).toLocaleString()}

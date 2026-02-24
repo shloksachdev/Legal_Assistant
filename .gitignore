@@ -10,7 +10,7 @@ ENV/
 
 # Local databases and cache
 kuzu_data/
-
+kuzu_data.wal
 # Environment files (keep example)
 .env
 .env.*

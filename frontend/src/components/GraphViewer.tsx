@@ -38,12 +38,19 @@ export default function GraphViewer({ stats, onSeed, isSeeding }: GraphViewerPro
         </div>
 
         {onSeed && (
-          <button onClick={onSeed} className="btn-secondary" disabled={isSeeding} style={{ fontSize: "12px" }}>
+          <button
+            onClick={onSeed}
+            className="btn-secondary"
+            disabled={isSeeding}
+            style={{ fontSize: "12px" }}
+          >
             {isSeeding ? (
               <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
                 <span className="spinner" style={{ width: "12px", height: "12px" }} />
                 Seeding...
               </span>
+            ) : stats && stats.nodes.total > 0 ? (
+              "Reseed Data"
             ) : (
               "Load Seed Data"
             )}
@@ -52,7 +59,13 @@ export default function GraphViewer({ stats, onSeed, isSeeding }: GraphViewerPro
       </div>
 
       {stats ? (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px" }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+            gap: "12px",
+          }}
+        >
           <StatCard
             label="Works"
             count={stats.nodes.works}
@@ -119,6 +132,7 @@ function StatCard({
         padding: "12px",
         textAlign: "center",
         transition: "border-color 0.2s",
+        overflow: "hidden",
       }}
       onMouseEnter={(e) => (e.currentTarget.style.borderColor = color)}
       onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--border-muted)")}
