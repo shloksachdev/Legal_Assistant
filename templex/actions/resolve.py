@@ -20,8 +20,16 @@ def resolve_item_reference(query: str, top_k: int = 5) -> dict | None:
     Returns:
         Dict with work_id, expr_id, title, score, or None if not found.
     """
+    
+    # Globally improve semantic matching by appending strong context keywords
+    # This prevents short alphanumeric inputs (like "IPC-375") from accidentally matching
+    # nodes that just happen to share random sub-tokens (like BNS-113).
+    contextualized_query = query
+    if "law text" not in query.lower():
+        contextualized_query = f"{query} law text title definition"
+        
     # Encode the query
-    query_embedding = EmbeddingEngine.encode_query(query)
+    query_embedding = EmbeddingEngine.encode_query(contextualized_query)
 
     # Retrieve all expressions with their embeddings
     conn = KuzuConnection.get_connection()
