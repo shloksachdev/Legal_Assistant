@@ -59,8 +59,8 @@ export default function ResultDisplay({ response, plan, isLoading }: ResultDispl
                   {step.step_id}
                 </div>
                 <code style={{
-                  fontSize: "12px", background: "var(--bg-tertiary)",
-                  padding: "2px 6px", borderRadius: "4px", color: "var(--accent-blue)",
+                    background: "var(--bg-tertiary)",
+                  padding: "2px 8px", borderRadius: "9999px", color: "var(--accent-blue)",
                 }}>
                   {step.action}
                 </code>

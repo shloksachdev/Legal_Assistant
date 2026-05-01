@@ -274,10 +274,13 @@ export default function Home() {
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column", background: "var(--bg-primary)" }}>
       {/* ── Header ─────────────────────────────────────────────── */}
-      <header style={{
-        borderBottom: "1px solid var(--border-default)",
-        background: "var(--bg-secondary)",
-        padding: "10px 20px",
+      <header className="glass-card" style={{
+        borderTop: "none",
+        borderLeft: "none",
+        borderRight: "none",
+        borderRadius: "0 0 32px 32px",
+        margin: "0 16px 16px 16px",
+        padding: "12px 24px",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
@@ -285,7 +288,7 @@ export default function Home() {
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <div style={{
-            width: "28px", height: "28px", borderRadius: "8px",
+            width: "32px", height: "32px", borderRadius: "50%",
             background: "linear-gradient(135deg, var(--accent-blue), #bc8cff)",
             display: "flex", alignItems: "center", justifyContent: "center",
             fontSize: "14px", fontWeight: 800, color: "white",
@@ -370,36 +373,35 @@ export default function Home() {
         {/* Right panel */}
         {showPanel && (
           <div style={{
-            width: "300px",
+            width: "320px",
             borderLeft: "1px solid var(--border-default)",
-            background: "var(--bg-canvas)",
-            overflow: "auto",
-            padding: "16px",
+            background: "transparent",
+            display: "flex",
+            flexDirection: "column",
+            padding: "20px",
             flexShrink: 0,
           }}>
-            <GraphViewer stats={stats} onSeed={handleSeed} isSeeding={isSeeding} />
-
             {/* Saved chats */}
-            <div style={{ marginTop: "16px", padding: "12px", background: "var(--bg-secondary)", borderRadius: "6px", border: "1px solid var(--border-muted)" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
-                <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+            <div className="glass-card" style={{ padding: "16px", flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+                <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-primary)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
                   Chats
                 </span>
                 <button
                   onClick={handleNewChat}
                   className="btn-secondary"
-                  style={{ fontSize: "10px", padding: "2px 8px" }}
+                  style={{ fontSize: "10px", padding: "4px 8px" }}
                   disabled={isLoading}
                 >
                   + New
                 </button>
               </div>
               {chatSummaries.length === 0 ? (
-                <p style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+                <p style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "8px" }}>
                   New chats will appear here.
                 </p>
               ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: "4px", maxHeight: "180px", overflowY: "auto" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px", overflowY: "auto", paddingRight: "4px" }}>
                   {chatSummaries.map((chat) => {
                     const isActive = chat.id === sessionId;
                     return (
@@ -408,14 +410,15 @@ export default function Home() {
                         onClick={() => handleSelectChat(chat.id)}
                         style={{
                           textAlign: "left",
-                          borderRadius: "6px",
-                          padding: "6px 8px",
-                          border: "1px solid " + (isActive ? "var(--accent-blue)" : "var(--border-muted)"),
-                          background: isActive ? "var(--accent-blue-muted)" : "var(--bg-canvas)",
+                          borderRadius: "9999px",
+                          padding: "8px 16px",
+                          border: "1px solid " + (isActive ? "var(--accent-blue)" : "transparent"),
+                          background: isActive ? "var(--accent-blue-muted)" : "transparent",
                           cursor: isLoading ? "not-allowed" : "pointer",
-                          fontSize: "11px",
-                          color: "var(--text-secondary)",
+                          fontSize: "12px",
+                          color: isActive ? "var(--text-primary)" : "var(--text-secondary)",
                           opacity: isLoading ? 0.6 : 1,
+                          transition: "all 0.2s ease",
                         }}
                         disabled={isLoading}
                       >
@@ -449,54 +452,78 @@ export default function Home() {
                             ✕
                           </button>
                         </div>
-                        <div style={{ fontSize: "10px", color: "var(--text-muted)" }}>
-                          {new Date(chat.updatedAt).toLocaleString()}
+
+                          <div style={{ fontSize: "10px", color: "var(--text-muted)" }}>
+                            {new Date(chat.updatedAt).toLocaleString()}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* System Details Dropdown */}
+              <details className="glass-card" style={{ marginTop: "16px", padding: "16px", flexShrink: 0 }}>
+                <summary style={{ 
+                  cursor: "pointer", 
+                  fontSize: "11px", 
+                  fontWeight: 600, 
+                  color: "var(--text-muted)", 
+                  textTransform: "uppercase", 
+                  letterSpacing: "0.5px", 
+                  outline: "none",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px"
+                }}>
+                  System Details 
+                  <span style={{ fontSize: "9px", opacity: 0.7 }}>(Graph, Session, Pipeline)</span>
+                </summary>
+                
+                <div style={{ marginTop: "20px", display: "flex", flexDirection: "column", gap: "20px" }}>
+                  <GraphViewer stats={stats} onSeed={handleSeed} isSeeding={isSeeding} />
+
+                  {/* Session info */}
+                  <div>
+                    <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                      Session
+                    </span>
+                    <p style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "4px", fontFamily: "monospace" }}>
+                      {sessionId ? sessionId.slice(0, 8) + "..." : "Not connected"}
+                    </p>
+                    <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "2px" }}>
+                      {messages.length} message{messages.length !== 1 ? "s" : ""}
+                    </p>
+                  </div>
+
+                  {/* Architecture info */}
+                  <div>
+                    <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                      Pipeline
+                    </span>
+                    <div style={{ marginTop: "8px", display: "flex", flexDirection: "column", gap: "8px" }}>
+                      {[
+                        { icon: "🔍", label: "resolve_legal_reference", desc: "Semantic search → Work ID" },
+                        { icon: "📅", label: "get_version_at_date", desc: "Point-in-time retrieval" },
+                        { icon: "🔗", label: "trace_legislative_history", desc: "Causal chain + diffs" },
+                        { icon: "⚡", label: "aggregate_legislative_impact", desc: "Multi-hop aggregation" },
+                      ].map((t) => (
+                        <div key={t.label} style={{ fontSize: "11px", display: "flex", gap: "8px", alignItems: "flex-start" }}>
+                          <span style={{ fontSize: "14px" }}>{t.icon}</span>
+                          <div>
+                            <div style={{ color: "var(--text-secondary)", fontWeight: 500 }}>{t.label}</div>
+                            <div style={{ color: "var(--text-muted)", fontSize: "10px" }}>{t.desc}</div>
+                          </div>
                         </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Session info */}
-            <div style={{ marginTop: "16px", padding: "12px", background: "var(--bg-secondary)", borderRadius: "6px", border: "1px solid var(--border-muted)" }}>
-              <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                Session
-              </span>
-              <p style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "4px", fontFamily: "monospace" }}>
-                {sessionId ? sessionId.slice(0, 8) + "..." : "Not connected"}
-              </p>
-              <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "2px" }}>
-                {messages.length} message{messages.length !== 1 ? "s" : ""}
-              </p>
-            </div>
-
-            {/* Architecture info */}
-            <div style={{ marginTop: "16px", padding: "12px", background: "var(--bg-secondary)", borderRadius: "6px", border: "1px solid var(--border-muted)" }}>
-              <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                Pipeline
-              </span>
-              <div style={{ marginTop: "8px", display: "flex", flexDirection: "column", gap: "6px" }}>
-                {[
-                  { icon: "🔍", label: "resolve_legal_reference", desc: "Semantic search → Work ID" },
-                  { icon: "📅", label: "get_version_at_date", desc: "Point-in-time retrieval" },
-                  { icon: "🔗", label: "trace_legislative_history", desc: "Causal chain + diffs" },
-                  { icon: "⚡", label: "aggregate_legislative_impact", desc: "Multi-hop aggregation" },
-                ].map((t) => (
-                  <div key={t.label} style={{ fontSize: "11px", display: "flex", gap: "6px", alignItems: "flex-start" }}>
-                    <span>{t.icon}</span>
-                    <div>
-                      <div style={{ color: "var(--text-secondary)", fontWeight: 500 }}>{t.label}</div>
-                      <div style={{ color: "var(--text-muted)", fontSize: "10px" }}>{t.desc}</div>
+                      ))}
                     </div>
                   </div>
-                ))}
-              </div>
+                </div>
+              </details>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
