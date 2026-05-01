@@ -16,7 +16,8 @@ from langchain_huggingface import HuggingFaceEndpoint, ChatHuggingFace
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from .config import HF_MODEL, HF_TOKEN
-from .llm.tools import TEMPLEX_TOOLS
+from .llm.tools import TEMPLEX_TOOLS, set_session_scope
+from .actions.scope import QueryScope
 
 
 Role = Literal["user", "assistant"]
@@ -50,12 +51,10 @@ class TempLexChatAgent:
             temperature=0.2,
         )
 
-        # Wrap the raw endpoint as a chat model so it uses the
-        # provider's conversational interface instead of plain
-        # text-generation.
         self._llm = ChatHuggingFace(llm=base_llm)
 
-        self._sessions: Dict[str, List[ChatMessage]] = {}
+        # Each session stores {"history": [...], "scope": QueryScope | None}
+        self._sessions: Dict[str, Dict[str, Any]] = {}
 
         self._system_prompt = (
             "You are TempLex, a legal reasoning assistant that answers questions "
@@ -120,37 +119,49 @@ class TempLexChatAgent:
         )
 
     # ── Session management -------------------------------------------------
-    def create_session(self) -> str:
+    def create_session(self, scope: "QueryScope | None" = None) -> str:
         """Create a new chat session and return its ID."""
+        from .actions.scope import QueryScope as _QueryScope
         session_id = str(uuid4())
-        self._sessions[session_id] = []
+        self._sessions[session_id] = {
+            "history": [],
+            "scope": scope,
+        }
         return session_id
 
     def get_history(self, session_id: str) -> List[ChatMessage]:
         """Return the stored message history for a session."""
-        return list(self._sessions.get(session_id, []))
+        session = self._sessions.get(session_id, {})
+        return list(session.get("history", []))
 
     # ── Chat API -----------------------------------------------------------
     def chat(self, session_id: str, message: str) -> Dict[str, Any]:
-        """Send a message in a session and get the model response.
-
-        Returns a JSON‑serializable dict compatible with the existing frontend:
-        {
-          "response": <assistant text>,
-          "tool_calls": <list>  # currently empty but kept for compatibility
-        }
-        """
+        """Send a message in a session and get the model response."""
         if not session_id:
             raise ValueError("session_id is required")
 
         if session_id not in self._sessions:
-            # Auto‑create a session if the ID is unknown
-            self._sessions[session_id] = []
+            self._sessions[session_id] = {"history": [], "scope": None}
 
-        history = self._sessions[session_id]
+        session = self._sessions[session_id]
+        history = session["history"]
+        scope   = session.get("scope")  # QueryScope | None
+
+        # Inject scope into tool layer so all tools use it automatically
+        from .llm.tools import set_session_scope
+        set_session_scope(scope)
+
+        # Build scope-aware system prompt suffix
+        scope_note = ""
+        if scope:
+            scope_note = (
+                f"\n\nSESSION SCOPE: The user is viewing law as of {scope.reference_date}. "
+                f"In-scope active results are ranked higher but all history and "
+                f"cross-domain results remain accessible. {scope.describe()}"
+            )
 
         # Build LangChain message list: system + prior turns + new user message
-        lc_messages: List[Any] = [SystemMessage(content=self._system_prompt)]
+        lc_messages: List[Any] = [SystemMessage(content=self._system_prompt + scope_note)]
 
         for msg in history:
             if msg["role"] == "user":

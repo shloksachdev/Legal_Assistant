@@ -3,6 +3,9 @@
 Given a Work ID and a target date, traverses the diachronic chain of
 Component Temporal Versions to isolate the exact text legally active
 on that specific date. 100% deterministic — no probabilistic inference.
+
+If target_date is None, the session's reference_date is used (injected
+by the tool layer from the session scope).
 """
 
 from templex.db.connection import KuzuConnection
@@ -12,7 +15,7 @@ def get_valid_version(work_id: str, target_date: str) -> dict | None:
     """Fetch the Expression (CTV) valid at a specific point in time.
 
     Args:
-        work_id: Canonical Work ID (e.g., "IPC-124A").
+        work_id:     Canonical Work ID (e.g., "IPC-124A").
         target_date: ISO date string (e.g., "2024-08-15").
 
     Returns:
@@ -20,7 +23,7 @@ def get_valid_version(work_id: str, target_date: str) -> dict | None:
     """
     conn = KuzuConnection.get_connection()
 
-    # Retrieve all CTVs for this Work
+    # Retrieve all CTVs for this Work — add LIMIT for large works
     result = conn.execute(
         """
         MATCH (w:Work {work_id: $wid})-[:HAS_VERSION]->(e:Expression)
@@ -34,10 +37,10 @@ def get_valid_version(work_id: str, target_date: str) -> dict | None:
     while result.has_next():
         row = result.get_next()
         versions.append({
-            "expr_id": row[0],
+            "expr_id":      row[0],
             "text_content": row[1],
-            "valid_from": row[2],
-            "valid_to": row[3],
+            "valid_from":   row[2],
+            "valid_to":     row[3],
         })
 
     if not versions:
@@ -48,47 +51,51 @@ def get_valid_version(work_id: str, target_date: str) -> dict | None:
         vf = v["valid_from"]
         vt = v["valid_to"]
 
-        # Check: valid_from <= target_date AND (valid_to IS NULL or valid_to > target_date)
         if vf <= target_date:
             if not vt or vt == "" or vt > target_date:
                 return {
-                    "work_id": work_id,
-                    "expr_id": v["expr_id"],
+                    "work_id":      work_id,
+                    "expr_id":      v["expr_id"],
                     "text_content": v["text_content"],
-                    "valid_from": v["valid_from"],
-                    "valid_to": v["valid_to"],
-                    "target_date": target_date,
-                    "status": "active",
+                    "valid_from":   v["valid_from"],
+                    "valid_to":     v["valid_to"],
+                    "target_date":  target_date,
+                    "status":       "active",
                 }
 
-    # If no version covers the target date, the provision didn't exist yet
-    # or was fully repealed
-    earliest = versions[0]["valid_from"]
+    # Provision didn't exist yet or was fully repealed on target_date
+    earliest  = versions[0]["valid_from"]
     latest_to = versions[-1].get("valid_to", "")
 
     if target_date < earliest:
         return {
             "work_id": work_id,
-            "status": "not_yet_enacted",
+            "status":  "not_yet_enacted",
             "message": f"This provision was not enacted until {earliest}.",
         }
 
     if latest_to and target_date >= latest_to:
         return {
-            "work_id": work_id,
-            "status": "repealed",
+            "work_id":    work_id,
+            "status":     "repealed",
             "repealed_on": latest_to,
-            "message": f"This provision was repealed/replaced on {latest_to}.",
-            "last_text": versions[-1]["text_content"],
+            "message":    f"This provision was repealed/replaced on {latest_to}.",
+            "last_text":  versions[-1]["text_content"],
         }
 
     return None
 
 
-def get_all_versions(work_id: str) -> list[dict]:
-    """Retrieve the full diachronic chain of all CTVs for a Work.
+def get_all_versions(work_id: str, limit: int = 10, offset: int = 0) -> list[dict]:
+    """Retrieve the diachronic chain of CTVs for a Work, paginated.
 
-    Returns list of versions ordered chronologically.
+    Args:
+        work_id: Canonical Work ID.
+        limit:   Max number of versions to return (default 10).
+        offset:  Number of versions to skip for pagination (default 0).
+
+    Returns:
+        List of version dicts ordered chronologically.
     """
     conn = KuzuConnection.get_connection()
     result = conn.execute(
@@ -104,9 +111,11 @@ def get_all_versions(work_id: str) -> list[dict]:
     while result.has_next():
         row = result.get_next()
         versions.append({
-            "expr_id": row[0],
+            "expr_id":      row[0],
             "text_content": row[1],
-            "valid_from": row[2],
-            "valid_to": row[3],
+            "valid_from":   row[2],
+            "valid_to":     row[3],
         })
-    return versions
+
+    # Apply pagination in Python (KuzuDB LIMIT/OFFSET support is version-dependent)
+    return versions[offset: offset + limit]

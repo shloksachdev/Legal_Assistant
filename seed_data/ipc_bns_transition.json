@@ -10,6 +10,7 @@
       "title": "Indian Penal Code, 1860",
       "jurisdiction": "India",
       "work_type": "statute",
+      "domain": "criminal",
       "parent_work_id": null
     },
     {
@@ -17,6 +18,7 @@
       "title": "Section 124A - Sedition",
       "jurisdiction": "India",
       "work_type": "section",
+      "domain": "criminal",
       "parent_work_id": "IPC"
     },
     {
@@ -24,6 +26,7 @@
       "title": "Section 302 - Punishment for murder",
       "jurisdiction": "India",
       "work_type": "section",
+      "domain": "criminal",
       "parent_work_id": "IPC"
     },
     {
@@ -31,6 +34,7 @@
       "title": "Section 376 - Punishment for rape",
       "jurisdiction": "India",
       "work_type": "section",
+      "domain": "criminal",
       "parent_work_id": "IPC"
     },
     {
@@ -38,6 +42,7 @@
       "title": "Bharatiya Nyaya Sanhita, 2023",
       "jurisdiction": "India",
       "work_type": "statute",
+      "domain": "criminal",
       "parent_work_id": null
     },
     {
@@ -45,6 +50,7 @@
       "title": "Section 103 - Punishment for murder",
       "jurisdiction": "India",
       "work_type": "section",
+      "domain": "criminal",
       "parent_work_id": "BNS"
     },
     {
@@ -52,6 +58,7 @@
       "title": "Section 63 - Punishment for rape",
       "jurisdiction": "India",
       "work_type": "section",
+      "domain": "criminal",
       "parent_work_id": "BNS"
     },
     {
@@ -59,6 +66,7 @@
       "title": "Section 111 - Organised crime",
       "jurisdiction": "India",
       "work_type": "section",
+      "domain": "criminal",
       "parent_work_id": "BNS"
     },
     {
@@ -66,6 +74,7 @@
       "title": "Section 113 - Terrorist act",
       "jurisdiction": "India",
       "work_type": "section",
+      "domain": "criminal",
       "parent_work_id": "BNS"
     }
   ],

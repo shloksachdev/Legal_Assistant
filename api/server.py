@@ -13,6 +13,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from templex.agent import TempLexChatAgent, chat_agent
+from templex.actions.scope import QueryScope
 from templex.actions.resolve import resolve_item_reference
 from templex.actions.temporal import get_valid_version, get_all_versions
 from templex.actions.causality import trace_causality
@@ -65,13 +66,65 @@ class AggregateRequest(BaseModel):
     action_id: str
 
 
+class ScopePayload(BaseModel):
+    reference_date: str | None = None
+    domains: list[str] = []
+    jurisdictions: list[str] = []
+
+
+class NewSessionRequest(BaseModel):
+    scope: ScopePayload | None = None
+
+
 # ── Chat Endpoints ───────────────────────────────────────────────────────
 
 @app.post("/api/chat/new")
-async def create_session():
-    """Create a new chat session."""
-    session_id = chat_agent.create_session()
+async def create_session(req: NewSessionRequest | None = None):
+    """Create a new chat session with optional scope."""
+    scope = None
+    if req and req.scope:
+        scope = QueryScope(
+            reference_date=req.scope.reference_date,
+            domains=req.scope.domains,
+            jurisdictions=req.scope.jurisdictions
+        )
+    
+    session_id = chat_agent.create_session(scope=scope)
     return {"session_id": session_id}
+
+
+@app.get("/api/scope/options")
+async def get_scope_options():
+    """Returns available filter options live from the graph."""
+    conn = KuzuConnection.get_connection()
+    
+    # Fetch distinct values from the graph
+    domains_res = conn.execute("MATCH (w:Work) RETURN DISTINCT w.domain")
+    jurisd_res = conn.execute("MATCH (w:Work) RETURN DISTINCT w.jurisdiction")
+    date_res = conn.execute("MATCH (e:Expression) RETURN MIN(e.valid_from), MAX(e.valid_from)")
+    
+    domains = []
+    while domains_res.has_next():
+        val = domains_res.get_next()[0]
+        if val: domains.append(val)
+        
+    jurisdictions = []
+    while jurisd_res.has_next():
+        val = jurisd_res.get_next()[0]
+        if val: jurisdictions.append(val)
+        
+    earliest = "1800-01-01"
+    latest = "2024-07-01"
+    if date_res.has_next():
+        row = date_res.get_next()
+        earliest = row[0] or earliest
+        latest = row[1] or latest
+        
+    return {
+        "domains": sorted(domains),
+        "jurisdictions": sorted(jurisdictions),
+        "date_range": {"earliest": earliest, "latest": latest}
+    }
 
 
 @app.post("/api/chat")

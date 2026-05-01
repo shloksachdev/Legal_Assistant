@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import ChatInterface from "@/components/ChatInterface";
 import ChatInput from "@/components/QueryPanel";
 import GraphViewer from "@/components/GraphViewer";
+import ScopeSelector from "@/components/ScopeSelector";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
@@ -40,6 +41,8 @@ export default function Home() {
   const [showPanel, setShowPanel] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [chatSummaries, setChatSummaries] = useState<ChatSummary[]>([]);
+  const [scope, setScope] = useState<{ reference_date: string; domains: string[]; jurisdictions: string[] } | null>(null);
+  const [showScopeSelector, setShowScopeSelector] = useState(false);
 
   // Helpers for localStorage‑backed chat list
   const STORAGE_KEY_SUMMARIES = "templex_chat_summaries";
@@ -92,13 +95,17 @@ export default function Home() {
   // Create session on mount and load any stored chats
   useEffect(() => {
     loadStoredChats();
-    createSession();
+    // Don't auto-create session on mount anymore; wait for ScopeSelector
     fetchStats();
   }, []);
 
-  const createSession = async () => {
+  const createSession = async (sessionScope?: typeof scope) => {
     try {
-      const res = await fetch(`${API_BASE}/api/chat/new`, { method: "POST" });
+      const res = await fetch(`${API_BASE}/api/chat/new`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scope: sessionScope }),
+      });
       if (res.ok) {
         const data = await res.json();
         const id = data.session_id as string;
@@ -111,6 +118,8 @@ export default function Home() {
         };
         setSessionId(id);
         setMessages([]);
+        setScope(sessionScope || null);
+        setShowScopeSelector(false);
         setChatSummaries((prev) => {
           const next = [newSummary, ...prev.filter((c) => c.id !== id)];
           persistSummaries(next);
@@ -119,7 +128,7 @@ export default function Home() {
         persistMessages(id, []);
       }
     } catch {
-      // Server might not be running
+      setError("Failed to connect to server. Ensure backend is running.");
     }
   };
 
@@ -229,8 +238,12 @@ export default function Home() {
   };
 
   const handleNewChat = () => {
-    if (isLoading) return; // avoid switching sessions mid-response
-    createSession();
+    if (isLoading) return;
+    setShowScopeSelector(true);
+  };
+
+  const handleStartSession = (newScope: any) => {
+    createSession(newScope);
   };
 
   const handleDeleteChat = (id: string) => {
@@ -303,6 +316,24 @@ export default function Home() {
           </div>
         </div>
 
+        {scope && (
+          <div style={{ display: "flex", gap: "8px", overflow: "hidden" }}>
+            <div className="badge badge-blue" style={{ fontSize: "10px", whiteSpace: "nowrap" }}>
+              📅 {scope.reference_date}
+            </div>
+            {scope.domains.length > 0 && (
+              <div className="badge badge-purple" style={{ fontSize: "10px", whiteSpace: "nowrap" }}>
+                ⚖️ {scope.domains.join(" + ")}
+              </div>
+            )}
+            {scope.jurisdictions.length > 0 && (
+              <div className="badge badge-green" style={{ fontSize: "10px", whiteSpace: "nowrap" }}>
+                🇮🇳 {scope.jurisdictions.join(" + ")}
+              </div>
+            )}
+          </div>
+        )}
+
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
           <span className="badge badge-blue" style={{ fontSize: "10px" }}>LangChain</span>
           <span className="badge badge-green" style={{ fontSize: "10px" }}>ReAct</span>
@@ -342,7 +373,11 @@ export default function Home() {
             padding: "0 20px",
           }}>
             <div style={{ maxWidth: "800px", margin: "0 auto" }}>
-              <ChatInterface messages={messages} isLoading={isLoading} />
+              {(!sessionId || showScopeSelector) ? (
+                <ScopeSelector apiBase={API_BASE} onStart={handleStartSession} />
+              ) : (
+                <ChatInterface messages={messages} isLoading={isLoading} />
+              )}
             </div>
           </div>
 

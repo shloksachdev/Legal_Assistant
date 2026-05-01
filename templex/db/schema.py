@@ -27,10 +27,17 @@ def initialize_schema():
             title STRING,
             jurisdiction STRING,
             work_type STRING,
+            domain STRING,
             parent_work_id STRING,
             PRIMARY KEY (work_id)
         )
     """)
+    
+    # Migration: Add domain column if missing (since CREATE TABLE IF NOT EXISTS won't add it)
+    try:
+        conn.execute("ALTER TABLE Work ADD domain STRING DEFAULT 'other'")
+    except Exception:
+        pass # Already exists or table not yet created
 
     _safe_execute(conn, """
         CREATE NODE TABLE IF NOT EXISTS Expression (

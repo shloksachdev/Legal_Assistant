@@ -30,3 +30,10 @@ INDIANKANOON_BASE_URL = "https://api.indiankanoon.org"
 # ─── API Server ───────────────────────────────────────────────────────────────
 API_HOST = "127.0.0.1"
 API_PORT = 8000
+
+# ─── Scope Boost Weights ──────────────────────────────────────────────────────
+# Applied additively during re-ranking in resolve_item_reference().
+# Nothing is excluded — these are purely additive to raw cosine similarity score.
+SCOPE_BOOST_VALIDITY     = 0.15   # Expression was ACTIVE on the reference_date
+SCOPE_BOOST_DOMAIN       = 0.10   # Work domain matches user's selected domains
+SCOPE_BOOST_JURISDICTION = 0.08   # Work jurisdiction matches user's selection

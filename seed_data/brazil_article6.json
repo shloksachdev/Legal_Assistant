@@ -9,6 +9,7 @@
       "title": "Federal Constitution of Brazil, 1988",
       "jurisdiction": "Brazil",
       "work_type": "constitution",
+      "domain": "constitutional",
       "parent_work_id": null
     },
     {
@@ -16,6 +17,7 @@
       "title": "Title II — Fundamental Rights and Guarantees",
       "jurisdiction": "Brazil",
       "work_type": "title",
+      "domain": "constitutional",
       "parent_work_id": "BR-CF88"
     },
     {
@@ -23,6 +25,7 @@
       "title": "Chapter II — Social Rights",
       "jurisdiction": "Brazil",
       "work_type": "chapter",
+      "domain": "constitutional",
       "parent_work_id": "BR-CF88-T2"
     },
     {
@@ -30,6 +33,7 @@
       "title": "Article 6 — Social Rights",
       "jurisdiction": "Brazil",
       "work_type": "article",
+      "domain": "constitutional",
       "parent_work_id": "BR-CF88-T2-C2"
     }
   ],

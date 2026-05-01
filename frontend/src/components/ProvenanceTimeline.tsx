@@ -156,7 +156,7 @@ export default function ProvenanceTimeline({
                       background: "var(--bg-canvas)",
                       border: "1px solid var(--border-default)",
                       borderRadius: "9999px",
-                      fontSize: "11px",
+                      // fontSize: "11px",
                       overflow: "auto",
                       maxHeight: "200px",
                       color: "var(--text-secondary)",

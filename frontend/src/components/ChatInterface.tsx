@@ -95,9 +95,9 @@ export default function ChatInterface({ messages, isLoading }: ChatInterfaceProp
                       border: `1px solid ${info.color}30`,
                       borderRadius: "9999px",
                       fontWeight: 500,
-                      background: `${info.color}15`,
-                      color: info.color,
-                      border: `1px solid ${info.color}30`,
+                      // background: `${info.color}15`,
+                      // color: info.color,
+                      // border: `1px solid ${info.color}30`,
                     }}
                   >
                     <span>{info.icon}</span>

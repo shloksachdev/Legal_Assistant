@@ -212,6 +212,7 @@ def _ingest_seed_data(data: dict):
             SET w.title = $title,
                 w.jurisdiction = $jurisdiction,
                 w.work_type = $work_type,
+                w.domain = $domain,
                 w.parent_work_id = $parent_work_id
             """,
             {
@@ -219,6 +220,7 @@ def _ingest_seed_data(data: dict):
                 "title": work["title"],
                 "jurisdiction": work["jurisdiction"],
                 "work_type": work["work_type"],
+                "domain": work.get("domain", "other"),
                 "parent_work_id": work.get("parent_work_id", ""),
             },
         )
