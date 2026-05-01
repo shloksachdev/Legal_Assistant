@@ -16,6 +16,7 @@ def main():
         description="TempLex GraphRAG: Temporal Legal Reasoning Agent"
     )
     parser.add_argument("--seed", action="store_true", help="Load seed data")
+    parser.add_argument("--fetch", type=str, help="Fetch and ingest live cases from CourtListener")
     parser.add_argument("--serve", action="store_true", help="Start API server")
     parser.add_argument("--query", type=str, help="Execute a single query")
     parser.add_argument("--host", default="127.0.0.1", help="Server host")
@@ -24,6 +25,8 @@ def main():
 
     if args.seed:
         _seed()
+    elif args.fetch:
+        _fetch(args.fetch)
     elif args.serve:
         _serve(args.host, args.port)
     elif args.query:
@@ -41,6 +44,17 @@ def _seed():
     load_seed_data()
 
     console.print("[bold green]✓[/] Seed data loaded successfully.\n")
+
+
+def _fetch(query: str):
+    from rich.console import Console
+    console = Console()
+    console.print(f"\n[bold blue]TempLex GraphRAG[/] — Fetching live data for: '{query}'\n")
+
+    from templex.ingestion.graph_populator import ingest_from_courtlistener
+    ingest_from_courtlistener(query)
+
+    console.print("\n[bold green]✓[/] Fetch and ingestion complete.\n")
 
 
 def _serve(host: str, port: int):
