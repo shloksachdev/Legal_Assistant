@@ -156,10 +156,38 @@ def aggregate_impact_tool(action_id: str) -> str:
             
     return output
 
+@tool
+def fetch_live_cases_tool(query: str, max_results: int = 3) -> str:
+    """Search the live CourtListener database to fetch new cases.
+    Use this if you need more recent or specific cases not found in the local graph.
+    Provide a highly precise boolean/technical legal query (e.g., 'sedition AND punishment').
+    """
+    from templex.ingestion.graph_populator import ingest_from_courtlistener
+    import contextlib
+    import io
+    
+    # Capture the output so we can verify if cases were actually fetched
+    f = io.StringIO()
+    with contextlib.redirect_stdout(f):
+        ingest_from_courtlistener(query, max_results=max_results)
+        
+    stdout_output = f.getvalue()
+    
+    if "No opinions found" in stdout_output:
+        return "No new live cases found for this query."
+    
+    # Return a success marker encouraging it to use resolve_reference_tool next
+    return (
+        f"Successfully fetched and ingested up to {max_results} live cases based on '{query}'. "
+        f"You MUST now use resolve_reference_tool to search the local database for these new cases."
+    )
+
+
 # List of all available tools
 TEMPLEX_TOOLS = [
     resolve_reference_tool,
     get_version_tool,
     trace_history_tool,
-    aggregate_impact_tool
+    aggregate_impact_tool,
+    fetch_live_cases_tool
 ]

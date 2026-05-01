@@ -13,9 +13,17 @@ User Query → LLM Query Planner (Gemini Flash)
            → getValidVersion (Deterministic: Temporal Traversal)
            → traceCausality (Deterministic: Causal Edge Walk + Diff)
            → aggregateImpact (Deterministic: Multi-hop Aggregation)
+           → fetchLiveCases (JIT Retrieval: API to Graph Ingestion)
            → LLM Response Synthesizer
            → Provenance-Backed Legal Analysis
 ```
+
+### Just-In-Time (JIT) Retrieval
+TempLex features a JIT Retrieval pipeline for fetching live data on the fly:
+1. **Dynamic Fetching**: If the local graph lacks recent or specific cases, the LLM uses `fetch_live_cases_tool` to search the live CourtListener API.
+2. **Parallel Processing**: Fetches multiple court opinions concurrently using multithreading to minimize latency.
+3. **Native Graph Ingestion**: Downloaded text is instantly embedded (using `all-MiniLM-L6-v2`) and woven into the KuzuDB graph using the LRMoo schema (Work, Expression, and Action nodes).
+4. **Seamless RAG**: Once natively ingested, the LLM is forced to re-query the deterministic local graph to safely read the new cases, strictly preventing hallucinations.
 
 ## UI Preview
 
@@ -47,7 +55,10 @@ Main chat interface (TempLex GraphRAG):
 ```bash
 pip install -r requirements.txt
 cp .env.example .env
-# Edit .env with your GEMINI_API_KEY (free from https://aistudio.google.com)
+# Edit .env to add your required API keys:
+# - GEMINI_API_KEY (free from https://aistudio.google.com)
+# - HF_TOKEN (Hugging Face token for the chat agent)
+# - COURTLISTENER_API_TOKEN (free from Free Law Project for JIT retrieval)
 
 # Load seed data
 python main.py --seed

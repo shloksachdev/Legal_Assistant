@@ -11,6 +11,7 @@ from templex.db.connection import KuzuConnection
 from templex.db.schema import initialize_schema
 from templex.embeddings.engine import EmbeddingEngine
 from templex.config import SEED_DIR
+from templex.ingestion.courtlistener import CourtListenerClient
 
 
 def load_seed_data():
@@ -25,6 +26,85 @@ def load_seed_data():
         _ingest_seed_data(data)
 
     print(f"  ✓ Loaded {len(seed_files)} seed file(s)")
+
+
+def ingest_from_courtlistener(query: str, max_results: int = 5):
+    """Fetch opinions from CourtListener and ingest them natively into KuzuDB."""
+    client = CourtListenerClient()
+    if not client.is_available:
+        print("[Error] COURTLISTENER_API_TOKEN is not configured in .env")
+        return
+
+    print(f"  Fetching cases from CourtListener for query: '{query}'")
+    clusters = client.search_opinions(query, max_results=max_results)
+    if not clusters:
+        print("  No opinions found.")
+        return
+
+    new_data = {"works": [], "expressions": [], "actions": []}
+
+    import concurrent.futures
+    
+    def process_cluster(cluster):
+        if not cluster.get("opinions"):
+            return None
+            
+        opinion_id = cluster["opinions"][0]["id"]
+        opinion_data = client.fetch_opinion(opinion_id)
+        if not opinion_data:
+            return None
+
+        work_id = f"CL-OP-{opinion_id}"
+        expr_id = f"CL-EXP-{opinion_id}-1"
+        action_id = f"ACT-CL-{opinion_id}"
+        
+        title = cluster.get("caseName", f"Court Opinion {opinion_id}")
+        date_filed = cluster.get("dateFiled", "1970-01-01")
+        
+        # safely extract text
+        text_content = opinion_data.get("plain_text")
+        if not text_content:
+            text_content = cluster["opinions"][0].get("snippet", "(No plain text available)")
+            
+        return {
+            "work": {
+                "work_id": work_id,
+                "title": title,
+                "jurisdiction": cluster.get("court", "Unknown"),
+                "work_type": "opinion",
+                "parent_work_id": ""
+            },
+            "expression": {
+                "expr_id": expr_id,
+                "work_id": work_id,
+                "text_content": text_content,
+                "valid_from": date_filed,
+                "valid_to": ""
+            },
+            "action": {
+                "action_id": action_id,
+                "action_type": "judgment",
+                "description": f"Judgment issued for {title}",
+                "effective_date": date_filed,
+                "source_ref": f"CourtListener ID {opinion_id}",
+                "initiates": [expr_id],
+                "terminates": []
+            }
+        }
+        
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_results) as executor:
+        results = list(executor.map(process_cluster, clusters))
+        
+    for res in results:
+        if res:
+            new_data["works"].append(res["work"])
+            new_data["expressions"].append(res["expression"])
+            new_data["actions"].append(res["action"])
+        
+    print(f"  Processing {len(new_data['works'])} downloaded opinions...")
+    initialize_schema()
+    _ingest_seed_data(new_data)
+    print("  ✓ CourtListener data fully ingested.")
 
 
 def _ingest_seed_data(data: dict):
