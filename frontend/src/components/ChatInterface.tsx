@@ -66,10 +66,10 @@ export default function ChatInterface({ messages, isLoading }: ChatInterfaceProp
           {/* Message bubble */}
           <div style={{
             maxWidth: msg.role === "user" ? "70%" : "90%",
-            background: msg.role === "user" ? "var(--accent-blue-muted)" : "var(--bg-secondary)",
+            background: msg.role === "user" ? "var(--accent-blue)" : "var(--bg-secondary)",
             border: `1px solid ${msg.role === "user" ? "rgba(88,166,255,0.2)" : "var(--border-default)"}`,
-            borderRadius: msg.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
-            padding: "12px 16px",
+            borderRadius: msg.role === "user" ? "32px 32px 8px 32px" : "32px 32px 32px 8px",
+            padding: "12px 18px",
           }}>
             {msg.role === "assistant" ? (
               <div className="markdown-body" dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
@@ -90,9 +90,10 @@ export default function ChatInterface({ messages, isLoading }: ChatInterfaceProp
                       display: "inline-flex",
                       alignItems: "center",
                       gap: "4px",
-                      padding: "2px 8px",
-                      borderRadius: "10px",
-                      fontSize: "11px",
+                      background: `${info.color}15`,
+                      color: info.color,
+                      border: `1px solid ${info.color}30`,
+                      borderRadius: "9999px",
                       fontWeight: 500,
                       background: `${info.color}15`,
                       color: info.color,
@@ -118,7 +119,7 @@ export default function ChatInterface({ messages, isLoading }: ChatInterfaceProp
           <div style={{
             background: "var(--bg-secondary)",
             border: "1px solid var(--border-default)",
-            borderRadius: "16px 16px 16px 4px",
+            borderRadius: "32px 32px 32px 8px",
             padding: "14px 20px",
             display: "flex",
             alignItems: "center",
@@ -150,7 +151,9 @@ function EmptyState() {
       <div style={{
         width: "56px",
         height: "56px",
-        borderRadius: "16px",
+        margin: "12px 0",
+        borderRadius: "50%",
+        overflow: "hidden",
         background: "linear-gradient(135deg, var(--accent-blue), #bc8cff)",
         display: "flex",
         alignItems: "center",
@@ -172,10 +175,10 @@ function EmptyState() {
       <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", justifyContent: "center", marginTop: "8px" }}>
         {["🔍 Resolve", "📅 Temporal", "🔗 Trace", "⚡ Impact"].map((tool) => (
           <span key={tool} style={{
-            padding: "4px 10px",
-            borderRadius: "10px",
+            padding: "8px 16px",
+            borderRadius: "9999px",
             fontSize: "11px",
-            background: "var(--bg-tertiary)",
+            background: "var(--bg-secondary)",
             color: "var(--text-secondary)",
             border: "1px solid var(--border-muted)",
           }}>

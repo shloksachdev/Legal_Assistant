@@ -51,7 +51,8 @@ export default function ProvenanceTimeline({
 
       {workTitle && (
         <p style={{ fontSize: "14px", color: "var(--text-secondary)", marginBottom: "16px" }}>
-          <code style={{ color: "var(--accent-blue)", background: "var(--bg-tertiary)", padding: "2px 6px", borderRadius: "4px", fontSize: "12px" }}>
+          <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-primary)" }}>Entity Provenance:</span>
+          <code style={{ color: "var(--accent-blue)", background: "var(--bg-tertiary)", padding: "2px 8px", borderRadius: "9999px", fontSize: "12px" }}>
             {workId}
           </code>{" "}
           {workTitle}
@@ -99,10 +100,10 @@ export default function ProvenanceTimeline({
             {/* Event card */}
             <div
               style={{
-                background: "var(--bg-tertiary)",
-                border: "1px solid var(--border-muted)",
-                borderRadius: "6px",
-                padding: "12px",
+                background: "var(--bg-canvas)",
+                border: "1px solid var(--border-default)",
+                borderRadius: "32px",
+                padding: "16px",
               }}
             >
               <div
@@ -154,8 +155,8 @@ export default function ProvenanceTimeline({
                       fontSize: "11px",
                       background: "var(--bg-canvas)",
                       border: "1px solid var(--border-default)",
-                      borderRadius: "4px",
-                      padding: "8px",
+                      borderRadius: "9999px",
+                      fontSize: "11px",
                       overflow: "auto",
                       maxHeight: "200px",
                       color: "var(--text-secondary)",

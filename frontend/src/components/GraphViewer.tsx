@@ -125,22 +125,28 @@ function StatCard({
 }) {
   return (
     <div
+      className="glass-card-interactive"
       style={{
-        background: "var(--bg-canvas)",
+        background: "transparent",
         border: "1px solid var(--border-muted)",
-        borderRadius: "6px",
-        padding: "12px",
+        borderRadius: "32px",
+        padding: "16px 12px",
         textAlign: "center",
-        transition: "border-color 0.2s",
         overflow: "hidden",
       }}
-      onMouseEnter={(e) => (e.currentTarget.style.borderColor = color)}
-      onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--border-muted)")}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.borderColor = color;
+        e.currentTarget.style.background = "var(--bg-tertiary)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.borderColor = "var(--border-muted)";
+        e.currentTarget.style.background = "transparent";
+      }}
     >
-      <div style={{ fontSize: "20px", marginBottom: "4px" }}>{icon}</div>
-      <div style={{ fontSize: "24px", fontWeight: 700, color }}>{count}</div>
-      <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-primary)" }}>{label}</div>
-      <div style={{ fontSize: "10px", color: "var(--text-muted)", marginTop: "2px" }}>{description}</div>
+      <div style={{ fontSize: "20px", marginBottom: "8px", filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.5))" }}>{icon}</div>
+      <div style={{ fontSize: "28px", fontWeight: 800, color, textShadow: "0 2px 8px rgba(0,0,0,0.4)" }}>{count}</div>
+      <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-primary)", letterSpacing: "0.5px" }}>{label}</div>
+      <div style={{ fontSize: "10px", color: "var(--text-muted)", marginTop: "4px" }}>{description}</div>
     </div>
   );
 }
