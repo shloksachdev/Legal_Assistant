@@ -11,6 +11,16 @@ from templex.actions.causality import trace_causality
 from templex.actions.aggregate import aggregate_impact
 
 
+def _format_source(source_ref: str) -> str:
+    """Format a source_ref into a citation string for the LLM.
+    If it is a real URL, returns a Markdown link. Otherwise returns plain text."""
+    if not source_ref:
+        return ""
+    if source_ref.startswith("http"):
+        return f"[{source_ref}]({source_ref})"
+    return source_ref
+
+
 @tool
 def resolve_reference_tool(query: str, top_k: int = 5) -> str:
     """Resolve a natural language reference to a canonical Work ID.
@@ -27,6 +37,8 @@ def resolve_reference_tool(query: str, top_k: int = 5) -> str:
     
     # Return a formatted string instead of raw dict for the LLM
     output = f"Best match: {result['title']} (Work ID: {result['work_id']})\n"
+    if result.get("source_url"):
+        output += f"Source URL: {result['source_url']}\n"
     output += f"Score: {result['score']:.4f}\n"
     output += f"Text Preview: {result['text_preview']}...\n\n"
     
@@ -98,7 +110,7 @@ def trace_history_tool(work_id: str) -> str:
         if action:
             output += f"--- Event: {action['effective_date']} ({action['action_type'].upper()}) ---\n"
             output += f"Action ID: {action['action_id']}\n"
-            output += f"Source: {action['source_ref']}\n"
+            output += f"**CITE THIS SOURCE**: {_format_source(action['source_ref'])}\n"
             output += f"Description: {action['description']}\n\n"
         
         # Prevent massive diffs from blowing up the context window / cutting off the LLM
@@ -136,7 +148,7 @@ def aggregate_impact_tool(action_id: str) -> str:
     action = result.get("action", {})
     output = f"Summary of {action.get('description')} ({action.get('effective_date')})\n"
     output += f"Action ID: {action.get('action_id')}\n"
-    output += f"Source: {action.get('source_ref')}\n\n"
+    output += f"**CITE THIS SOURCE**: {_format_source(action.get('source_ref', ''))}\n\n"
     
     summary = result.get("summary", {})
     output += f"Total Provisions Terminated: {summary.get('provisions_terminated')}\n"
@@ -183,11 +195,47 @@ def fetch_live_cases_tool(query: str, max_results: int = 3) -> str:
     )
 
 
+@tool
+def fetch_indian_cases_tool(query: str, max_results: int = 5, doctypes: str = "judgments,laws") -> str:
+    """Fetch live Indian legal documents from Indian Kanoon (indiankanoon.org).
+    Use this for ANY query about Indian law — Constitutional amendments, IPC/BNS sections,
+    Supreme Court judgments, High Court orders, or Indian statutes.
+    Provide a precise boolean query using ANDD/ORR/NOTT operators.
+    Use 'doctypes=laws' to fetch only Acts/statutes, 'doctypes=supremecourt' for SC judgments.
+    Example: query='44th amendment ANDD property right', doctypes='laws'
+    """
+    from templex.ingestion.graph_populator import ingest_from_indiankanoon
+    from templex.config import INDIANKANOON_API_TOKEN
+    import contextlib
+    import io
+
+    if not INDIANKANOON_API_TOKEN:
+        return (
+            "INDIANKANOON_API_TOKEN is not configured. "
+            "Sign up at api.indiankanoon.org to get a free academic token and add it to .env."
+        )
+
+    f = io.StringIO()
+    with contextlib.redirect_stdout(f):
+        ingest_from_indiankanoon(query, max_results=max_results, doctypes=doctypes)
+
+    stdout_output = f.getvalue()
+
+    if "No documents found" in stdout_output or "Error" in stdout_output:
+        return f"No Indian Kanoon documents found for query: '{query}'."
+
+    return (
+        f"Successfully fetched and ingested up to {max_results} Indian Kanoon documents for '{query}'. "
+        f"You MUST now use resolve_reference_tool to search the local database for these ingested documents."
+    )
+
+
 # List of all available tools
 TEMPLEX_TOOLS = [
     resolve_reference_tool,
     get_version_tool,
     trace_history_tool,
     aggregate_impact_tool,
-    fetch_live_cases_tool
+    fetch_live_cases_tool,
+    fetch_indian_cases_tool,
 ]

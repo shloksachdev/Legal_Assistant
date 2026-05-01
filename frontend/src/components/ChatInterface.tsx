@@ -198,6 +198,7 @@ function renderMarkdown(text: string): string {
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
     .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" style="color: var(--accent-blue); text-decoration: underline;">$1</a>')
     .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
     .replace(/^- (.+)$/gm, '<li>$1</li>')
     .replace(/\|(.+)\|/g, (match) => {

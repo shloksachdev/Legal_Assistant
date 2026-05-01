@@ -6,12 +6,14 @@ Generates embeddings for Expression nodes during ingestion.
 """
 
 import json
+import concurrent.futures
 from pathlib import Path
 from templex.db.connection import KuzuConnection
 from templex.db.schema import initialize_schema
 from templex.embeddings.engine import EmbeddingEngine
 from templex.config import SEED_DIR
 from templex.ingestion.courtlistener import CourtListenerClient
+from templex.ingestion.indiankanoon import IndianKanoonClient
 
 
 def load_seed_data():
@@ -61,6 +63,15 @@ def ingest_from_courtlistener(query: str, max_results: int = 5):
         title = cluster.get("caseName", f"Court Opinion {opinion_id}")
         date_filed = cluster.get("dateFiled", "1970-01-01")
         
+        # Construct the correct human-readable URL from the cluster's absolute_url.
+        # The cluster's absolute_url is like "/opinion/2233456/case-name/" — prepend the domain.
+        # Using opinion_id alone gives a 404 since CL uses cluster IDs in their URLs.
+        cluster_absolute_url = cluster.get("absolute_url", "")
+        if cluster_absolute_url:
+            source_url = f"https://www.courtlistener.com{cluster_absolute_url}"
+        else:
+            source_url = f"https://www.courtlistener.com/?q={opinion_id}"
+        
         # safely extract text
         text_content = opinion_data.get("plain_text")
         if not text_content:
@@ -86,7 +97,7 @@ def ingest_from_courtlistener(query: str, max_results: int = 5):
                 "action_type": "judgment",
                 "description": f"Judgment issued for {title}",
                 "effective_date": date_filed,
-                "source_ref": f"CourtListener ID {opinion_id}",
+                "source_ref": source_url,
                 "initiates": [expr_id],
                 "terminates": []
             }
@@ -105,6 +116,88 @@ def ingest_from_courtlistener(query: str, max_results: int = 5):
     initialize_schema()
     _ingest_seed_data(new_data)
     print("  ✓ CourtListener data fully ingested.")
+
+
+def ingest_from_indiankanoon(query: str, max_results: int = 5, doctypes: str = "judgments,laws"):
+    """Fetch documents from Indian Kanoon and ingest them into KuzuDB.
+
+    Args:
+        query:       Full-text boolean query (e.g. '44th amendment property right India').
+        max_results: Maximum number of documents to fetch and ingest.
+        doctypes:    Indian Kanoon doctype filter. Use 'laws' for Acts/statutes,
+                     'supremecourt' for SC judgments only, or 'judgments' for all courts.
+    """
+    client = IndianKanoonClient()
+    if not client.is_available:
+        print("[Error] INDIANKANOON_API_TOKEN is not configured in .env")
+        return
+
+    print(f"  Fetching Indian Kanoon docs for query: '{query}' (doctypes={doctypes})")
+    results = client.search(query, max_results=max_results, doctypes=doctypes)
+    if not results:
+        print("  No documents found on Indian Kanoon.")
+        return
+
+    new_data = {"works": [], "expressions": [], "actions": []}
+
+    def process_result(doc_meta):
+        tid = doc_meta.get("tid")
+        if not tid:
+            return None
+
+        text_content = client.fetch_document_text(tid)
+        if not text_content:
+            text_content = doc_meta.get("headline", "(No text available)")
+
+        title = doc_meta.get("title", f"Indian Kanoon Document {tid}")
+        docsource = doc_meta.get("docsource", "Indian Kanoon")
+        # Indian Kanoon documents don't always have a date; default to today if missing
+        date_filed = doc_meta.get("publishdate", "1947-01-01")
+
+        work_id = f"IK-{tid}"
+        expr_id = f"IK-EXP-{tid}-1"
+        action_id = f"ACT-IK-{tid}"
+        source_url = f"https://indiankanoon.org/doc/{tid}/"
+
+        return {
+            "work": {
+                "work_id": work_id,
+                "title": title,
+                "jurisdiction": "India",
+                "work_type": "judgment" if "court" in docsource.lower() else "statute",
+                "parent_work_id": "",
+            },
+            "expression": {
+                "expr_id": expr_id,
+                "work_id": work_id,
+                "text_content": text_content[:6000],  # Cap at 6k chars to stay within embedding limits
+                "valid_from": date_filed,
+                "valid_to": "",
+            },
+            "action": {
+                "action_id": action_id,
+                "action_type": "judgment",
+                "description": f"Document: {title} ({docsource})",
+                "effective_date": date_filed,
+                "source_ref": source_url,
+                "initiates": [expr_id],
+                "terminates": [],
+            },
+        }
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_results) as executor:
+        fetched = list(executor.map(process_result, results))
+
+    for res in fetched:
+        if res:
+            new_data["works"].append(res["work"])
+            new_data["expressions"].append(res["expression"])
+            new_data["actions"].append(res["action"])
+
+    print(f"  Processing {len(new_data['works'])} downloaded Indian Kanoon documents...")
+    initialize_schema()
+    _ingest_seed_data(new_data)
+    print("  ✓ Indian Kanoon data fully ingested.")
 
 
 def _ingest_seed_data(data: dict):

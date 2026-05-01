@@ -70,7 +70,8 @@ class TempLexChatAgent:
             "2. 'get_version_tool': Fetch the exact text of a Work ID valid at a specific date. Args: {\"work_id\": \"<id>\", \"target_date\": \"<YYYY-MM-DD>\"}\n"
             "3. 'trace_history_tool': See the full legislative history (when it was enacted/repealed) of a Work ID. Args: {\"work_id\": \"<id>\"}\n"
             "4. 'aggregate_impact_tool': See everything a specific legislative Action (e.g. 'ACT-BNS-2024') changed. Args: {\"action_id\": \"<id>\"}\n"
-            "5. 'fetch_live_cases_tool': Use this to dynamically reach out to the live CourtListener database. Construct a highly precise technical legal boolean search query (e.g., 'murder AND punishment' instead of 'what happens if I kill someone'). Following a successful fetch, immediately run 'resolve_reference_tool' to access and read the newly downloaded cases. Args: {\"query\": \"<search string>\"}\n\n"
+            "5. 'fetch_indian_cases_tool': Fetch INDIAN law from Indian Kanoon (indiankanoon.org). Use this for ANY query about Indian constitutional law, IPC, BNS, Supreme Court/High Court judgments, or Indian statutes. Use ANDD/ORR/NOTT boolean operators. Set doctypes='laws' for Acts/statutes, 'supremecourt' for SC judgments. Example: {\"query\": \"44th amendment ANDD property right\", \"doctypes\": \"laws\"}. After fetch, immediately use 'resolve_reference_tool'.\n"
+            "6. 'fetch_live_cases_tool': Fetch US case law from CourtListener. Use ONLY for US law queries. Args: {\"query\": \"<search string>\"}\n\n"
             "CRITICAL INSTRUCTIONS FOR TOOLS:\n"
             "- YOU MUST NEVER guess a 'work_id' (e.g. do not guess 'IPC Section 375').\n"
             "- YOU MUST ALWAYS use 'resolve_reference_tool' FIRST if you don't confidently know the exact hyphenated Work ID (e.g. IPC-376).\n"
@@ -83,16 +84,39 @@ class TempLexChatAgent:
             "}\n"
             "```\n"
             "DO NOT output anything else except the JSON block when calling a tool.\n\n"
-            "FINAL ANSWER FORMATTING:\n"
-            "Once you have gathered enough information using tools to answer the user's question, "
-            "provide your final answer in rich, conversational natural language without any JSON.\n"
-            "You MUST format your answer similarly to standard LLM responses with these guidelines:\n"
-            "1. Start with a conversational introduction directly addressing the user's question.\n"
-            "2. Use Markdown headings (e.g. `### Section 124A of the Indian Penal Code`) to divide topics.\n"
-            "3. Provide the full historical context (when it was enacted, what the punishments were).\n"
-            "4. Clearly explain the current transition or repeal status, detailing what replaced it (e.g. BNS sections) and its new punishments.\n"
-            "5. Use bullet points for listing punishments, conditions, or key facts.\n"
-            "6. Always ground your facts in the tool output, but write it fluidly as an expert legal assistant.\n"
+            "RESPONSE GUIDELINES:\n"
+            "Your response shape should be DRIVEN by the user's question, not by a fixed template. Adapt:\n"
+            "- If the user asks a simple factual question, give a direct, concise answer.\n"
+            "- If the user asks for history or a trace, use headings and a timeline format.\n"
+            "- If the user asks for a comparison, use a table or paired bullet points.\n"
+            "- ALWAYS use Markdown for formatting (headings, bullets).\n"
+            "- ALWAYS end with a '**Sources:**' section citing the '**CITE THIS SOURCE**' text from the tool output. NEVER invent URLs. If the source is plain text, cite it as plain text.\n"
+            "- NEVER answer from your own knowledge if tools return no results. Say the data is not in the database.\n\n"
+            "EXAMPLES (note how the shape changes based on the question type):\n"
+            "---\n"
+            "User: What is Article 21?\n"
+            "TempLex:\n"
+            "Article 21 of the Indian Constitution guarantees the **right to life and personal liberty**. No person shall be deprived of their life or personal liberty except according to a procedure established by law.\n\n"
+            "Over the years, the Supreme Court has expanded its scope to include the right to livelihood, health, education, and a dignified life.\n\n"
+            "**Sources:**\n"
+            "- The Constitution of India, Part III\n"
+            "---\n"
+            "User: How did the law on rape change from IPC to BNS?\n"
+            "TempLex:\n"
+            "### Evolution of Rape Law: IPC Section 376 → BNS Section 63\n\n"
+            "**1860 – Original IPC Section 376:**\n"
+            "- Minimum 7 years rigorous imprisonment.\n"
+            "- Aggravated cases (victim under 16): minimum 10 years.\n\n"
+            "**2013 – Criminal Law Amendment (Post-Nirbhaya):**\n"
+            "- Minimum raised to 10 years for all cases.\n"
+            "- New aggravating categories added: police officers, armed forces, persons in positions of trust.\n\n"
+            "**2024 – BNS Section 63 (IPC Replaced):**\n"
+            "- Minimum 10 years retained.\n"
+            "- Definition now explicitly includes **digital penetration**.\n"
+            "- New aggravating category: crimes during communal or sectarian violence.\n\n"
+            "**Sources:**\n"
+            "- Criminal Law (Amendment) Act, 2013 (Act No. 13 of 2013)\n"
+            "- Bharatiya Nyaya Sanhita, 2023 (Act No. 45 of 2023)\n"
         )
 
     # ── Session management -------------------------------------------------
@@ -134,11 +158,24 @@ class TempLexChatAgent:
             else:
                 lc_messages.append(AIMessage(content=msg["content"]))
 
+        # Re-inject a SystemMessage reminder before EVERY user turn.
+        # Small models (3B) suffer from "recency bias" — they mimic the style of the
+        # most recent message in history instead of following the original system prompt.
+        # Placing a fresh SystemMessage right before the new HumanMessage overrides this.
+        lc_messages.append(SystemMessage(content=(
+            "REMINDER — CRITICAL RULES FOR THIS TURN:\n"
+            "1. ALWAYS use 'resolve_reference_tool' first to search the local database.\n"
+            "2. If the local search fails ('No matching provisions found'), use 'fetch_live_cases_tool' with a precise boolean legal query.\n"
+            "3. Format your final answer with: Markdown headings, bullet points for key facts, and clickable source links at the very bottom.\n"
+            "4. Be EXTREMELY relevant to the user's exact question. Do NOT dump unrelated legal text.\n"
+            "5. NEVER answer from internal knowledge if the tool returns no results."
+        )))
         lc_messages.append(HumanMessage(content=message))
 
         # We will loop to support tool execution
         tool_calls_history = []
-        max_iterations = 5
+        max_iterations = 8
+        courtlistener_fetched = False  # Track if we've already tried CourtListener for this turn
         
         for _ in range(max_iterations):
             # Call the LLM
@@ -175,6 +212,31 @@ class TempLexChatAgent:
                         "output_preview": str(tool_out)[:100] + "..." if len(str(tool_out)) > 100 else str(tool_out)
                     })
                     
+                    # HARD INTERCEPT: Stop the 3B model from hallucinating if retrieval fails
+                    if tool_name == "resolve_reference_tool" and "No matching provisions found" in str(tool_out):
+                        if not courtlistener_fetched:
+                            courtlistener_fetched = True
+                            # Route by jurisdiction: Indian queries → Indian Kanoon, US queries → CourtListener
+                            observation = (
+                                f"Tool '{tool_name}' returned: {tool_out}\n\n"
+                                "SYSTEM COMMAND: The data is not in the local database. You must fetch it live.\n"
+                                "JURISDICTION ROUTING RULES:\n"
+                                "- If the query is about Indian law (Constitution, IPC, BNS, Indian SC/HC cases, Indian amendments) "
+                                "→ use 'fetch_indian_cases_tool' with ANDD/ORR/NOTT operators and appropriate doctypes ('laws' for Acts, 'supremecourt' for SC judgments).\n"
+                                "- If the query is about US law → use 'fetch_live_cases_tool'.\n"
+                                "Do NOT attempt to answer yet. ONLY output the JSON tool call now."
+                            )
+                            lc_messages.append(HumanMessage(content=observation))
+                            continue
+                        else:
+                            # Second miss AFTER a live fetch — data is genuinely unavailable
+                            assistant_text = (
+                                "I was unable to find relevant information about your query in either the local database "
+                                "or the live data sources. The specific provision or case may not be indexed. "
+                                "Please verify your query terms or try a more specific legal reference."
+                            )
+                            break
+                    
                     # Append the tool message to our message list (as a human observation of the tool)
                     observation = f"Tool '{tool_name}' returned:\n{tool_out}\n\nBased on this, either use another tool, or provide your final answer."
                     lc_messages.append(HumanMessage(content=observation))
@@ -189,7 +251,17 @@ class TempLexChatAgent:
                 # No JSON found, this is the final textual response
                 break
         else:
-            assistant_text = "Sorry, I hit the maximum number of tool iterations without producing a final answer."
+            # Force a final synthesis from whatever context was accumulated
+            lc_messages.append(SystemMessage(content=(
+                "You have used several tools. You MUST now stop calling tools and provide your "
+                "final answer to the user's question based on the information gathered so far. "
+                "Do NOT output any JSON. Write your final answer now."
+            )))
+            force_result = self._llm.invoke(lc_messages)
+            assistant_text = getattr(force_result, "content", str(force_result))
+            # If it's still a JSON tool call somehow, fall back gracefully
+            if "```json" in assistant_text:
+                assistant_text = "I gathered information but was unable to synthesize a final answer. Please try rephrasing your question."
 
         assistant_msg: ChatMessage = {
             "role": "assistant",
