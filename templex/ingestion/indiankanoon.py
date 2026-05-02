@@ -84,7 +84,7 @@ class IndianKanoonClient:
             Dict with keys: doc (HTML), title, docsource, or None on failure.
         """
         try:
-            resp = requests.get(
+            resp = requests.post(
                 f"{self.base_url}/doc/{tid}/",
                 headers=self.headers,
                 timeout=30,

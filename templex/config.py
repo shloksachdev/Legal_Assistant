@@ -37,3 +37,9 @@ API_PORT = 8000
 SCOPE_BOOST_VALIDITY     = 0.15   # Expression was ACTIVE on the reference_date
 SCOPE_BOOST_DOMAIN       = 0.10   # Work domain matches user's selected domains
 SCOPE_BOOST_JURISDICTION = 0.08   # Work jurisdiction matches user's selection
+
+# ─── Autonomous Research Pipeline ──────────────────────────────────────────────
+MAX_SEARCH_QUERIES = 5
+MAX_INGEST_PER_TURN = 3
+CONFIDENCE_THRESHOLD = 0.65
+

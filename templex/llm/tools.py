@@ -233,40 +233,29 @@ def fetch_live_cases_tool(query: str, max_results: int = 3) -> str:
 
 
 @tool
-def fetch_indian_cases_tool(query: str, max_results: int = 5, doctypes: str = "judgments,laws") -> str:
-    """Search Indian Kanoon for Indian legal documents and return a list of results.
-    Returns METADATA ONLY (titles, IDs, dates) — use ingest_document_tool(tid=...) to
-    fetch full text of any specific document.
+def fetch_indian_cases_tool(queries: list[str], doctypes: str = "judgments,laws") -> str:
+    """Run the High-Confidence Autonomous Research Pipeline for Indian Law.
+    This tool will run multiple searches, re-rank the metadata locally, and automatically
+    ingest the top 3 most relevant full-text documents into the local graph.
 
     Args:
-        query:       Boolean query using ANDD/ORR/NOTT operators.
-        max_results: Maximum number of results to list (default 5).
-        doctypes:    'laws' for Acts/statutes, 'supremecourt' for SC judgments.
+        queries:  A list of 3-5 diverse boolean queries (e.g., ["sedition IPC 124A", "BNS section 152"]).
+        doctypes: 'laws' for Acts/statutes, 'supremecourt' for SC judgments.
     """
-    from templex.ingestion.indiankanoon import IndianKanoonClient
-    from templex.config import INDIANKANOON_API_TOKEN
+    from templex.llm.research import ResearchPipeline
 
-    if not INDIANKANOON_API_TOKEN:
-        return (
-            "INDIANKANOON_API_TOKEN is not configured. "
-            "Sign up at api.indiankanoon.org to get a free academic token and add it to .env."
-        )
+    if not queries:
+        return "You must provide at least one query in the queries list."
 
-    client = IndianKanoonClient()
-    results = client.search(query, max_results=max_results, doctypes=doctypes)
+    # Execute the autonomous pipeline
+    result = ResearchPipeline.execute_indian_law_research(
+        original_prompt=queries[0], # Use the first query as the baseline for re-ranking
+        queries=queries,
+        doctypes=doctypes,
+        scope=_get_scope()
+    )
 
-    if not results:
-        return f"No Indian Kanoon documents found for query: '{query}'."
-
-    output = f"Found {len(results)} documents for '{query}':\n"
-    for i, doc in enumerate(results, 1):
-        tid   = doc.get("tid", "?")
-        title = doc.get("title", f"Document {tid}")
-        date  = doc.get("publishdate", "unknown date")
-        output += f"{i}. [tid={tid}] \"{title}\" — {date}\n"
-
-    output += "\nCall ingest_document_tool(tid=\"...\") to fetch the full text of any document above."
-    return output
+    return result
 
 
 @tool

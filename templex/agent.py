@@ -69,7 +69,7 @@ class TempLexChatAgent:
             "2. 'get_version_tool': Fetch the exact text of a Work ID valid at a specific date. Args: {\"work_id\": \"<id>\", \"target_date\": \"<YYYY-MM-DD>\"}\n"
             "3. 'trace_history_tool': See the full legislative history (when it was enacted/repealed) of a Work ID. Args: {\"work_id\": \"<id>\"}\n"
             "4. 'aggregate_impact_tool': See everything a specific legislative Action (e.g. 'ACT-BNS-2024') changed. Args: {\"action_id\": \"<id>\"}\n"
-            "5. 'fetch_indian_cases_tool': Fetch INDIAN law from Indian Kanoon (indiankanoon.org). Use this for ANY query about Indian constitutional law, IPC, BNS, Supreme Court/High Court judgments, or Indian statutes. Use ANDD/ORR/NOTT boolean operators. Set doctypes='laws' for Acts/statutes, 'supremecourt' for SC judgments. Example: {\"query\": \"44th amendment ANDD property right\", \"doctypes\": \"laws\"}. After fetch, immediately use 'resolve_reference_tool'.\n"
+            "5. 'fetch_indian_cases_tool': Fetch INDIAN law from Indian Kanoon (indiankanoon.org). Use this for ANY query about Indian constitutional law, IPC, BNS, Supreme Court/High Court judgments, or Indian statutes. SPECULATIVE EXPANSION: You must provide an array of 3-5 diverse boolean queries (ANDD/ORR/NOTT) to ensure high recall. Example: {\"queries\": [\"sedition ANDD IPC 124A\", \"BNS section 152\", \"sedition supreme court landmark\"], \"doctypes\": \"laws\"}. After fetch, immediately use 'resolve_reference_tool'.\n"
             "6. 'fetch_live_cases_tool': Fetch US case law from CourtListener. Use ONLY for US law queries. Args: {\"query\": \"<search string>\"}\n\n"
             "CRITICAL INSTRUCTIONS FOR TOOLS:\n"
             "- YOU MUST NEVER guess a 'work_id' (e.g. do not guess 'IPC Section 375').\n"
@@ -233,7 +233,7 @@ class TempLexChatAgent:
                                 "SYSTEM COMMAND: The data is not in the local database. You must fetch it live.\n"
                                 "JURISDICTION ROUTING RULES:\n"
                                 "- If the query is about Indian law (Constitution, IPC, BNS, Indian SC/HC cases, Indian amendments) "
-                                "→ use 'fetch_indian_cases_tool' with ANDD/ORR/NOTT operators and appropriate doctypes ('laws' for Acts, 'supremecourt' for SC judgments).\n"
+                                "→ use 'fetch_indian_cases_tool' and provide an array of 3-5 diverse boolean queries in the 'queries' argument (e.g. [\"q1\", \"q2\", \"q3\"]).\n"
                                 "- If the query is about US law → use 'fetch_live_cases_tool'.\n"
                                 "Do NOT attempt to answer yet. ONLY output the JSON tool call now."
                             )
