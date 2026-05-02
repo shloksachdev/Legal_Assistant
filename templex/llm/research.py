@@ -19,6 +19,7 @@ from templex.embeddings.engine import EmbeddingEngine
 from templex.ingestion.indiankanoon import IndianKanoonClient
 from templex.ingestion.graph_populator import _ingest_seed_data, initialize_schema
 from templex.actions.scope import QueryScope
+from templex.status import push_status
 
 
 class ResearchPipeline:
@@ -30,6 +31,7 @@ class ResearchPipeline:
         queries: List[str],
         doctypes: str = "judgments,laws",
         scope: QueryScope | None = None,
+        session_id: str = ""
     ) -> str:
         """Run the high-confidence pipeline for Indian Kanoon."""
         client = IndianKanoonClient()
@@ -40,6 +42,7 @@ class ResearchPipeline:
         queries = queries[:MAX_SEARCH_QUERIES]
         
         # ── Step 1: Parallel API Fetch (Metadata Only) ──
+        push_status(session_id, f"Executing {len(queries)} parallel search queries...")
         print(f"  [Research] Executing {len(queries)} parallel queries...")
         
         all_metadata = []
@@ -70,6 +73,7 @@ class ResearchPipeline:
         print(f"  [Research] Fetched {len(docs_list)} unique metadata snippets.")
 
         # ── Step 3: Fast Local Re-Ranking (EmbeddingEngine) ──
+        push_status(session_id, f"Fetched {len(docs_list)} snippets. Re-ranking locally...")
         query_emb = EmbeddingEngine.encode_query(original_prompt)
         
         # Build text to encode for each snippet (Title + Snippet)
@@ -119,6 +123,7 @@ class ResearchPipeline:
 
         # Apply Hard Cap
         to_ingest = high_confidence_docs[:MAX_INGEST_PER_TURN]
+        push_status(session_id, f"Found {len(high_confidence_docs)} relevant docs. Fetching top {len(to_ingest)} full texts...")
         print(f"  [Research] {len(to_ingest)} documents passed confidence threshold. Initiating parallel full-text fetch...")
 
         # ── Step 5: Parallel Full-Text Fetch & Ingest ──
@@ -169,6 +174,8 @@ class ResearchPipeline:
         with concurrent.futures.ThreadPoolExecutor(max_workers=len(to_ingest)) as executor:
             fetched_results = list(executor.map(fetch_and_prepare, to_ingest))
             
+        push_status(session_id, "Parsing LRMoo structure and generating embeddings...")
+            
         for res in fetched_results:
             if res:
                 new_data["works"].append(res["work"])
@@ -176,8 +183,10 @@ class ResearchPipeline:
                 new_data["actions"].append(res["action"])
 
         if new_data["works"]:
+            push_status(session_id, "Inserting new nodes into Kùzu Graph...")
             initialize_schema()
             _ingest_seed_data(new_data)
+            push_status(session_id, "Ingestion complete. Resuming semantic search...")
             
             summary = "Autonomous Research Complete. Successfully fetched and ingested:\n"
             for w in new_data["works"]:

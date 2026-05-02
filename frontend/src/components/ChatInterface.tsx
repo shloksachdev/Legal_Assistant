@@ -17,6 +17,7 @@ interface Message {
 interface ChatInterfaceProps {
   messages: Message[];
   isLoading: boolean;
+  statusLogs?: string[];
 }
 
 const TOOL_LABELS: Record<string, { label: string; icon: string; color: string }> = {
@@ -26,12 +27,12 @@ const TOOL_LABELS: Record<string, { label: string; icon: string; color: string }
   aggregate_legislative_impact: { label: "Impact", icon: "⚡", color: "var(--accent-orange)" },
 };
 
-export default function ChatInterface({ messages, isLoading }: ChatInterfaceProps) {
+export default function ChatInterface({ messages, isLoading, statusLogs = [] }: ChatInterfaceProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isLoading]);
+  }, [messages, isLoading, statusLogs]);
 
   if (messages.length === 0 && !isLoading) {
     return <EmptyState />;
@@ -110,7 +111,7 @@ export default function ChatInterface({ messages, isLoading }: ChatInterfaceProp
         </div>
       ))}
 
-      {/* Typing indicator */}
+      {/* Typing & Status Log indicator */}
       {isLoading && (
         <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "6px" }}>
           <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--accent-blue)", textTransform: "uppercase", letterSpacing: "0.5px", padding: "0 4px" }}>
@@ -122,11 +123,39 @@ export default function ChatInterface({ messages, isLoading }: ChatInterfaceProp
             borderRadius: "32px 32px 32px 8px",
             padding: "14px 20px",
             display: "flex",
-            alignItems: "center",
-            gap: "6px",
+            flexDirection: "column",
+            gap: "8px",
+            minWidth: "250px",
           }}>
-            <span className="spinner" style={{ width: "14px", height: "14px" }} />
-            <span style={{ fontSize: "13px", color: "var(--text-muted)" }}>Reasoning with graph traversal...</span>
+            {/* Elegant Status Logs */}
+            {statusLogs.length > 0 ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                {statusLogs.slice(-3).map((log, idx, arr) => (
+                  <div key={idx} style={{ 
+                    fontSize: "12px", 
+                    fontFamily: "monospace",
+                    color: idx === arr.length - 1 ? "var(--text-primary)" : "var(--text-muted)",
+                    opacity: idx === arr.length - 1 ? 1 : 0.6,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    animation: idx === arr.length - 1 ? "fade-in 0.3s ease-out" : "none"
+                  }}>
+                    {idx === arr.length - 1 ? (
+                      <span className="spinner" style={{ width: "10px", height: "10px" }} />
+                    ) : (
+                      <span style={{ color: "var(--accent-green)", fontSize: "10px" }}>✓</span>
+                    )}
+                    {log}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <span className="spinner" style={{ width: "14px", height: "14px" }} />
+                <span style={{ fontSize: "13px", color: "var(--text-muted)" }}>Reasoning with graph traversal...</span>
+              </div>
+            )}
           </div>
         </div>
       )}

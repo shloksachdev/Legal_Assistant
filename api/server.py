@@ -21,6 +21,7 @@ from templex.actions.aggregate import aggregate_impact
 from templex.db.connection import KuzuConnection
 from templex.db.schema import initialize_schema
 from templex.ingestion.graph_populator import load_seed_data
+from templex.status import get_statuses, clear_statuses
 
 app = FastAPI(
     title="TempLex GraphRAG",
@@ -142,6 +143,19 @@ async def get_history(session_id: str):
     """Get message history for a session."""
     messages = chat_agent.get_history(session_id)
     return {"session_id": session_id, "messages": messages}
+
+
+@app.get("/api/chat/status/{session_id}")
+async def get_session_status(session_id: str):
+    """Get the real-time execution logs for a session."""
+    return {"logs": get_statuses(session_id)}
+
+
+@app.post("/api/chat/status/clear/{session_id}")
+async def clear_session_status(session_id: str):
+    """Clear logs before starting a new chat turn."""
+    clear_statuses(session_id)
+    return {"status": "cleared"}
 
 
 # ── Direct Action Endpoints (kept for programmatic access) ───────────────

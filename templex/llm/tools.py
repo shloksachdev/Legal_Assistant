@@ -14,19 +14,26 @@ from templex.actions.causality import trace_causality
 from templex.actions.aggregate import aggregate_impact
 from templex.llm.context_builder import ContextBuilder
 
-# ── Session scope — set by agent.py before each chat turn ─────────────────────
+# ── Session scope & ID — set by agent.py before each chat turn ──────────────────
 _current_scope = None   # QueryScope | None
+_current_session_id = "" # str
 
 
-def set_session_scope(scope) -> None:
+def set_session_state(session_id: str, scope) -> None:
     """Called by TempLexChatAgent before each tool execution turn."""
-    global _current_scope
+    global _current_scope, _current_session_id
     _current_scope = scope
+    _current_session_id = session_id
 
 
 def _get_scope():
     """Return the current session scope (may be None)."""
     return _current_scope
+
+
+def _get_session_id():
+    """Return the current session ID."""
+    return _current_session_id
 
 
 # ── Source formatting ──────────────────────────────────────────────────────────
@@ -252,7 +259,8 @@ def fetch_indian_cases_tool(queries: list[str], doctypes: str = "judgments,laws"
         original_prompt=queries[0], # Use the first query as the baseline for re-ranking
         queries=queries,
         doctypes=doctypes,
-        scope=_get_scope()
+        scope=_get_scope(),
+        session_id=_get_session_id()
     )
 
     return result

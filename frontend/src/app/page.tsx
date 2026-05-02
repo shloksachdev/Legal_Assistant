@@ -43,6 +43,7 @@ export default function Home() {
   const [chatSummaries, setChatSummaries] = useState<ChatSummary[]>([]);
   const [scope, setScope] = useState<{ reference_date: string; domains: string[]; jurisdictions: string[] } | null>(null);
   const [showScopeSelector, setShowScopeSelector] = useState(false);
+  const [statusLogs, setStatusLogs] = useState<string[]>([]);
 
   // Helpers for localStorage‑backed chat list
   const STORAGE_KEY_SUMMARIES = "templex_chat_summaries";
@@ -176,6 +177,24 @@ export default function Home() {
       return next;
     });
 
+    // Clear backend statuses before starting
+    try {
+      await fetch(`${API_BASE}/api/chat/status/clear/${sessionId}`, { method: "POST" });
+    } catch { /* noop */ }
+    
+    setStatusLogs([]);
+    
+    // Poll for status every 500ms
+    const intervalId = setInterval(async () => {
+      try {
+        const statusRes = await fetch(`${API_BASE}/api/chat/status/${sessionId}`);
+        if (statusRes.ok) {
+          const data = await statusRes.json();
+          setStatusLogs(data.logs || []);
+        }
+      } catch { /* noop */ }
+    }, 500);
+
     try {
       const res = await fetch(`${API_BASE}/api/chat`, {
         method: "POST",
@@ -224,6 +243,7 @@ export default function Home() {
         persistMessages(sessionId, next);
       }
     } finally {
+      clearInterval(intervalId);
       setIsLoading(false);
     }
   };
@@ -376,7 +396,7 @@ export default function Home() {
               {(!sessionId || showScopeSelector) ? (
                 <ScopeSelector apiBase={API_BASE} onStart={handleStartSession} />
               ) : (
-                <ChatInterface messages={messages} isLoading={isLoading} />
+                <ChatInterface messages={messages} isLoading={isLoading} statusLogs={statusLogs} />
               )}
             </div>
           </div>

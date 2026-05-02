@@ -16,8 +16,9 @@ from langchain_huggingface import HuggingFaceEndpoint, ChatHuggingFace
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from .config import HF_MODEL, HF_TOKEN
-from .llm.tools import TEMPLEX_TOOLS, set_session_scope
+from .llm.tools import TEMPLEX_TOOLS, set_session_state
 from .actions.scope import QueryScope
+from .status import push_status
 
 
 Role = Literal["user", "assistant"]
@@ -148,8 +149,9 @@ class TempLexChatAgent:
         scope   = session.get("scope")  # QueryScope | None
 
         # Inject scope into tool layer so all tools use it automatically
-        from .llm.tools import set_session_scope
-        set_session_scope(scope)
+        from .llm.tools import set_session_state
+        set_session_state(session_id, scope)
+        push_status(session_id, "Processing prompt...")
 
         # Build scope-aware system prompt suffix
         scope_note = ""
@@ -203,6 +205,8 @@ class TempLexChatAgent:
                     tool_name = tool_request.get("tool")
                     tool_args = tool_request.get("args", {})
                     
+                    push_status(session_id, f"Executing tool: {tool_name}...")
+                    
                     # Record the AI's tool request message in history
                     lc_messages.append(AIMessage(content=assistant_text))
                     
@@ -251,6 +255,7 @@ class TempLexChatAgent:
                     # Append the tool message to our message list (as a human observation of the tool)
                     observation = f"Tool '{tool_name}' returned:\n{tool_out}\n\nBased on this, either use another tool, or provide your final answer."
                     lc_messages.append(HumanMessage(content=observation))
+                    push_status(session_id, "Analyzing tool results...")
                     
                     # Loop back to let the LLM see the tool output and generate a final response
                     continue
