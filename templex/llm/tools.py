@@ -336,6 +336,254 @@ def ingest_document_tool(tid: str, source: str = "indiankanoon") -> str:
     )
 
 
+@tool
+def autonomous_research_tool(query: str) -> str:
+    """HIGH-CONFIDENCE AUTONOMOUS RESEARCH — use this when the user asks about a
+    topic that is NOT in the local database and you need to fetch from Indian Kanoon.
+
+    This tool implements the full 4-step research pipeline:
+      Step 1: Generates 3-5 diverse Boolean search queries from the user's prompt.
+      Step 2: Parallel API fetch across all queries (up to 50 metadata snippets).
+      Step 3: Local cosine + scope-boost re-ranking with 0.65 confidence threshold.
+      Step 4: Parallel full-text ingestion of only the top 3 highest-confidence docs.
+
+    Args:
+        query: The user's natural language legal question.
+    """
+    import concurrent.futures
+    import numpy as np
+    from templex.ingestion.indiankanoon import IndianKanoonClient
+    from templex.ingestion.graph_populator import _ingest_seed_data, initialize_schema
+    from templex.embeddings.engine import EmbeddingEngine
+    from templex.config import (
+        INDIANKANOON_API_TOKEN,
+        INGESTION_CONFIDENCE_THRESHOLD,
+        INGESTION_MAX_SNIPPETS,
+        INGESTION_TOP_K_INGEST,
+        SCOPE_BOOST_VALIDITY,
+        SCOPE_BOOST_DOMAIN,
+    )
+
+    if not INDIANKANOON_API_TOKEN:
+        return "INDIANKANOON_API_TOKEN is not configured."
+
+    client = IndianKanoonClient()
+
+    # ── Step 1: Speculative Multi-Query Expansion ─────────────────────────
+    # Generate diverse search variants from the original query.
+    # We do this deterministically (no LLM call) to avoid latency.
+    expanded_queries = _expand_queries(query)
+    output = f"Research Pipeline initiated for: '{query}'\n"
+    output += f"Step 1: Generated {len(expanded_queries)} query variants\n"
+
+    # ── Step 2: Parallel API Fetching (Metadata Only) ─────────────────────
+    all_snippets = []
+    seen_tids = set()
+
+    def search_one(q):
+        return client.search(q, max_results=10, doctypes="judgments,laws")
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(expanded_queries)) as executor:
+        results_map = executor.map(search_one, expanded_queries)
+
+    for batch in results_map:
+        for doc in batch:
+            tid = doc.get("tid")
+            if tid and tid not in seen_tids:
+                seen_tids.add(tid)
+                all_snippets.append(doc)
+                if len(all_snippets) >= INGESTION_MAX_SNIPPETS:
+                    break
+
+    output += f"Step 2: Fetched {len(all_snippets)} unique metadata snippets\n"
+
+    if not all_snippets:
+        return output + "No documents found across any query variant."
+
+    # ── Step 3: Fast Local Re-Ranking (Cosine + Scope Boost) ──────────────
+    # Vectorize the original query and all snippet headlines locally.
+    query_emb = EmbeddingEngine.encode_query(query)
+
+    snippet_texts = []
+    for doc in all_snippets:
+        title = doc.get("title", "")
+        headline = doc.get("headline", "")
+        # Combine title + headline for richer semantic signal
+        combined = f"{title}. {headline}"[:500]
+        snippet_texts.append(combined)
+
+    snippet_embs = EmbeddingEngine.encode_batch(snippet_texts)
+
+    # Score each snippet: cosine similarity + scope boost
+    scope = _get_scope()
+    scored = []
+    for i, doc in enumerate(all_snippets):
+        cos_sim = float(np.dot(query_emb, snippet_embs[i]) / (
+            np.linalg.norm(query_emb) * np.linalg.norm(snippet_embs[i]) + 1e-10
+        ))
+
+        # Apply scope boosts if applicable
+        boost = 0.0
+        if scope:
+            pub_date = doc.get("publishdate", "")
+            if pub_date and scope.reference_date:
+                # If document is from around the reference date era, boost it
+                if pub_date <= scope.reference_date:
+                    boost += SCOPE_BOOST_VALIDITY * 0.5  # Partial validity boost
+
+            if scope.domains:
+                doc_source = doc.get("docsource", "").lower()
+                for d in scope.domains:
+                    if d.lower() in doc_source:
+                        boost += SCOPE_BOOST_DOMAIN
+                        break
+
+        final_score = cos_sim + boost
+        scored.append((final_score, cos_sim, doc))
+
+    # Sort by final score descending
+    scored.sort(key=lambda x: x[0], reverse=True)
+
+    # Apply 0.65 confidence threshold
+    above_threshold = [(s, cs, d) for s, cs, d in scored if s >= INGESTION_CONFIDENCE_THRESHOLD]
+    below_threshold_count = len(scored) - len(above_threshold)
+
+    output += f"Step 3: {len(above_threshold)} docs above {INGESTION_CONFIDENCE_THRESHOLD} threshold"
+    output += f" ({below_threshold_count} discarded as noise)\n"
+
+    if not above_threshold:
+        # Return the top candidates anyway for user reference, but don't ingest
+        output += "\nNo documents met the confidence threshold. Top candidates:\n"
+        for i, (score, cs, doc) in enumerate(scored[:5], 1):
+            output += f"  {i}. [{doc.get('tid')}] \"{doc.get('title', '?')}\" — score: {score:.3f} (below {INGESTION_CONFIDENCE_THRESHOLD})\n"
+        output += "\nYou can manually ingest with ingest_document_tool(tid=\"...\")."
+        return output
+
+    # ── Step 4: Parallel Full-Text Ingestion (Top 3) ──────────────────────
+    top_docs = above_threshold[:INGESTION_TOP_K_INGEST]
+    output += f"Step 4: Ingesting top {len(top_docs)} documents in parallel\n\n"
+
+    def ingest_one(item):
+        score, cos_sim, doc = item
+        tid = doc.get("tid")
+        title = doc.get("title", f"Document {tid}")
+        date = doc.get("publishdate", "1947-01-01")
+        docsource = doc.get("docsource", "Indian Kanoon")
+
+        text_content = client.fetch_document_text(tid)
+        if not text_content:
+            return f"  ✗ tid={tid}: Failed to fetch full text"
+
+        work_id = f"IK-{tid}"
+        expr_id = f"IK-EXP-{tid}-1"
+        action_id = f"ACT-IK-{tid}"
+        source_url = f"https://indiankanoon.org/doc/{tid}/"
+
+        new_data = {
+            "works": [{
+                "work_id": work_id,
+                "title": title,
+                "jurisdiction": "India",
+                "work_type": "judgment" if "court" in docsource.lower() else "statute",
+                "domain": "other",
+                "parent_work_id": "",
+            }],
+            "expressions": [{
+                "expr_id": expr_id,
+                "work_id": work_id,
+                "text_content": text_content[:6000],
+                "valid_from": date,
+                "valid_to": "",
+            }],
+            "actions": [{
+                "action_id": action_id,
+                "action_type": "judgment",
+                "description": f"Document: {title} ({docsource})",
+                "effective_date": date,
+                "source_ref": source_url,
+                "initiates": [expr_id],
+                "terminates": [],
+            }],
+        }
+
+        _ingest_seed_data(new_data)
+        return f"  ✓ tid={tid}: \"{title}\" (score: {score:.3f}, cosine: {cos_sim:.3f})"
+
+    initialize_schema()
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=INGESTION_TOP_K_INGEST) as executor:
+        ingest_results = list(executor.map(ingest_one, top_docs))
+
+    for r in ingest_results:
+        output += r + "\n"
+
+    output += (
+        f"\nPipeline complete. {len(top_docs)} documents ingested into KuzuDB. "
+        f"Use resolve_reference_tool to find them in the local database."
+    )
+    return output
+
+
+def _expand_queries(original_query: str) -> list[str]:
+    """Generate 3-5 diverse Boolean search queries from a user's natural language query.
+
+    Uses deterministic keyword expansion — no LLM call needed.
+    Covers: exact terms, synonyms, statute references, and landmark cases.
+    """
+    import re
+
+    queries = [original_query]
+
+    # Extract key terms
+    stop_words = {"the", "a", "an", "in", "of", "and", "or", "is", "was", "what", "how", "when",
+                  "which", "that", "for", "on", "at", "to", "by", "with", "about", "under"}
+    words = [w.lower() for w in re.findall(r'\b[a-zA-Z]+\b', original_query) if w.lower() not in stop_words]
+
+    # Legal synonym map for common Indian law topics
+    synonyms = {
+        "sedition": ["sedition IPC 124A", "BNS section 152 sedition", "sedition supreme court landmark"],
+        "murder": ["murder IPC 302", "BNS section 101 murder", "murder death penalty supreme court"],
+        "rape": ["rape IPC 376", "BNS section 63 rape", "rape POCSO sexual assault"],
+        "dowry": ["dowry death IPC 304B", "dowry prohibition act", "dowry harassment 498A"],
+        "theft": ["theft IPC 378", "BNS section 303 theft", "theft robbery extortion"],
+        "amendment": ["constitutional amendment", "amendment act India", "constitution amendment bill"],
+        "property": ["right to property article 300A", "44th amendment property", "property fundamental right"],
+        "bail": ["bail CrPC 437", "anticipatory bail 438", "bail supreme court guidelines"],
+        "divorce": ["divorce Hindu Marriage Act", "mutual consent divorce", "divorce maintenance alimony"],
+        "custody": ["child custody guardians wards act", "custody visitation rights", "custody supreme court"],
+        "defamation": ["defamation IPC 499 500", "criminal defamation", "defamation free speech"],
+        "corruption": ["prevention of corruption act", "corruption public servant", "corruption CBI"],
+        "constitution": ["Indian constitution fundamental rights", "directive principles", "constitution preamble"],
+        "right to life": ["article 21 right to life", "right to life personal liberty", "article 21 supreme court"],
+        "free speech": ["article 19 freedom speech expression", "free speech restrictions", "article 19(2)"],
+        "reservation": ["reservation SC ST OBC", "reservation article 15 16", "reservation supreme court"],
+    }
+
+    # Check if any synonym key appears in the query
+    query_lower = original_query.lower()
+    for key, expansions in synonyms.items():
+        if key in query_lower:
+            for exp in expansions:
+                if exp not in queries:
+                    queries.append(exp)
+            break
+
+    # If no synonyms matched, generate variants from extracted words
+    if len(queries) == 1 and len(words) >= 2:
+        # Variant: key terms + "India"
+        queries.append(" ".join(words[:3]) + " India")
+        # Variant: key terms + "supreme court"
+        queries.append(" ".join(words[:2]) + " supreme court")
+        # Variant: key terms + "act section"
+        queries.append(" ".join(words[:2]) + " act section")
+
+    # Always add a "landmark" variant
+    if len(queries) < 5:
+        queries.append(f"{' '.join(words[:2])} landmark judgment India")
+
+    return queries[:5]  # Cap at 5
+
+
 # ── Tool registry ──────────────────────────────────────────────────────────────
 TEMPLEX_TOOLS = [
     resolve_reference_tool,
@@ -345,4 +593,6 @@ TEMPLEX_TOOLS = [
     fetch_live_cases_tool,
     fetch_indian_cases_tool,
     ingest_document_tool,
+    autonomous_research_tool,
 ]
+

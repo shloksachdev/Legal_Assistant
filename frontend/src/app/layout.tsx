@@ -1,5 +1,11 @@
 import type { Metadata } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
+import SessionWrapper from "@/components/SessionWrapper";
+
+const inter = Inter({
+  subsets: ["latin"],
+});
 
 export const metadata: Metadata = {
   title: "TempLex GraphRAG — Temporal Legal Reasoning",
@@ -14,13 +20,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <head>
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
-      </head>
-      <body style={{ fontFamily: "'Inter', sans-serif" }}>{children}</body>
+      <body className={inter.className}>
+        <SessionWrapper>{children}</SessionWrapper>
+      </body>
     </html>
   );
 }

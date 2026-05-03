@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useEffect } from "react";
+import DiffViewer, { parseDiffBlock } from "./DiffViewer";
 
 interface ToolCall {
   tool: string;
@@ -17,101 +18,66 @@ interface Message {
 interface ChatInterfaceProps {
   messages: Message[];
   isLoading: boolean;
+  streamingText?: string;
 }
 
 const TOOL_LABELS: Record<string, { label: string; icon: string; color: string }> = {
   resolve_legal_reference: { label: "Resolve", icon: "🔍", color: "var(--accent-blue)" },
+  resolve_reference_tool: { label: "Resolve", icon: "🔍", color: "var(--accent-blue)" },
   get_version_at_date: { label: "Temporal", icon: "📅", color: "var(--accent-green)" },
+  get_version_tool: { label: "Temporal", icon: "📅", color: "var(--accent-green)" },
   trace_legislative_history: { label: "Trace", icon: "🔗", color: "var(--accent-purple)" },
+  trace_history_tool: { label: "Trace", icon: "🔗", color: "var(--accent-purple)" },
   aggregate_legislative_impact: { label: "Impact", icon: "⚡", color: "var(--accent-orange)" },
+  aggregate_impact_tool: { label: "Impact", icon: "⚡", color: "var(--accent-orange)" },
+  fetch_live_cases_tool: { label: "Live US", icon: "🌐", color: "#3b82f6" },
+  fetch_indian_cases_tool: { label: "Live India", icon: "🇮🇳", color: "#f59e0b" },
+  ingest_document_tool: { label: "Ingest", icon: "📥", color: "#8b5cf6" },
 };
 
-export default function ChatInterface({ messages, isLoading }: ChatInterfaceProps) {
+export default function ChatInterface({ messages, isLoading, streamingText }: ChatInterfaceProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isLoading]);
+  }, [messages, isLoading, streamingText]);
 
-  if (messages.length === 0 && !isLoading) {
+  if (messages.length === 0 && !isLoading && !streamingText) {
     return <EmptyState />;
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "16px", padding: "16px 0" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "16px", padding: "20px 0 12px 0", width: "100%" }}>
       {messages.map((msg, i) => (
-        <div
-          key={i}
-          className="animate-fade-in"
-          style={{
-            animationDelay: `${Math.min(i * 50, 300)}ms`,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: msg.role === "user" ? "flex-end" : "flex-start",
-            gap: "6px",
-          }}
-        >
-          {/* Role label */}
-          <span style={{
-            fontSize: "11px",
-            fontWeight: 600,
-            color: msg.role === "user" ? "var(--text-muted)" : "var(--accent-blue)",
-            textTransform: "uppercase",
-            letterSpacing: "0.5px",
-            padding: "0 4px",
-          }}>
-            {msg.role === "user" ? "You" : "TempLex"}
-          </span>
-
-          {/* Message bubble */}
-          <div style={{
-            maxWidth: msg.role === "user" ? "70%" : "90%",
-            background: msg.role === "user" ? "var(--accent-blue)" : "var(--bg-secondary)",
-            border: `1px solid ${msg.role === "user" ? "rgba(88,166,255,0.2)" : "var(--border-default)"}`,
-            borderRadius: msg.role === "user" ? "32px 32px 8px 32px" : "32px 32px 32px 8px",
-            padding: "12px 18px",
-          }}>
-            {msg.role === "assistant" ? (
-              <div className="markdown-body" dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
-            ) : (
-              <p style={{ fontSize: "14px", color: "var(--text-primary)", lineHeight: "1.5" }}>{msg.content}</p>
-            )}
-          </div>
-
-          {/* Tool calls */}
-          {msg.tool_calls && msg.tool_calls.length > 0 && (
-            <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", padding: "0 4px" }}>
-              {msg.tool_calls.map((tc, j) => {
-                const info = TOOL_LABELS[tc.tool] || { label: tc.tool, icon: "🔧", color: "var(--text-muted)" };
-                return (
-                  <span
-                    key={j}
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "4px",
-                      background: `${info.color}15`,
-                      color: info.color,
-                      border: `1px solid ${info.color}30`,
-                      borderRadius: "9999px",
-                      fontWeight: 500,
-                      // background: `${info.color}15`,
-                      // color: info.color,
-                      // border: `1px solid ${info.color}30`,
-                    }}
-                  >
-                    <span>{info.icon}</span>
-                    {info.label}
-                  </span>
-                );
-              })}
-            </div>
-          )}
-        </div>
+        <MessageBubble key={i} msg={msg} index={i} />
       ))}
 
+      {/* Streaming text */}
+      {streamingText && (
+        <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "6px" }}>
+          <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--accent-blue)", textTransform: "uppercase", letterSpacing: "0.5px", padding: "0 4px" }}>
+            TempLex
+          </span>
+          <div style={{
+            maxWidth: "90%",
+            background: "var(--bg-secondary)",
+            border: "1px solid var(--border-default)",
+            borderRadius: "32px 32px 32px 8px",
+            padding: "12px 18px",
+          }}>
+            <div className="markdown-body" dangerouslySetInnerHTML={{ __html: renderMarkdown(streamingText) }} />
+            <span style={{
+              display: "inline-block", width: "8px", height: "16px",
+              background: "var(--accent-blue)",
+              animation: "blink 1s step-end infinite",
+              marginLeft: "2px", verticalAlign: "bottom", borderRadius: "1px",
+            }} />
+          </div>
+        </div>
+      )}
+
       {/* Typing indicator */}
-      {isLoading && (
+      {isLoading && !streamingText && (
         <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "6px" }}>
           <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--accent-blue)", textTransform: "uppercase", letterSpacing: "0.5px", padding: "0 4px" }}>
             TempLex
@@ -136,6 +102,135 @@ export default function ChatInterface({ messages, isLoading }: ChatInterfaceProp
   );
 }
 
+function MessageBubble({ msg, index }: { msg: Message; index: number }) {
+  const isUser = msg.role === "user";
+
+  return (
+    <div
+      className="animate-fade-in"
+      style={{
+        animationDelay: `${Math.min(index * 50, 300)}ms`,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: isUser ? "flex-end" : "flex-start",
+        gap: "6px",
+        width: "100%",
+      }}
+    >
+      {/* Role label */}
+      <span style={{
+        fontSize: "11px", fontWeight: 600,
+        color: isUser ? "var(--text-muted)" : "var(--accent-blue)",
+        textTransform: "uppercase", letterSpacing: "0.5px",
+        padding: "0 4px",
+      }}>
+        {isUser ? "You" : "TempLex"}
+      </span>
+
+      {/* Message bubble */}
+      <div style={{
+        maxWidth: isUser ? "72%" : "86%",
+        width: "fit-content",
+        background: isUser ? "var(--accent-blue)" : "var(--bg-secondary)",
+        border: `1px solid ${isUser ? "rgba(88,166,255,0.2)" : "var(--border-default)"}`,
+        borderRadius: isUser ? "32px 32px 8px 32px" : "32px 32px 32px 8px",
+        padding: "12px 18px",
+        boxShadow: "0 10px 24px rgba(0,0,0,0.18)",
+      }}>
+        {!isUser ? (
+          <MarkdownWithDiff content={msg.content} />
+        ) : (
+          <p style={{ fontSize: "14px", color: "var(--text-primary)", lineHeight: "1.5" }}>{msg.content}</p>
+        )}
+      </div>
+
+      {/* Tool calls */}
+      {msg.tool_calls && msg.tool_calls.length > 0 && (
+        <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", padding: "0 4px", maxWidth: "100%" }}>
+          {msg.tool_calls.map((tc, j) => {
+            const info = TOOL_LABELS[tc.tool] || { label: tc.tool, icon: "🔧", color: "var(--text-muted)" };
+            return (
+              <span
+                key={j}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: "4px",
+                  padding: "3px 10px",
+                  background: `${info.color}15`,
+                  color: info.color,
+                  border: `1px solid ${info.color}30`,
+                  borderRadius: "9999px",
+                  fontWeight: 500,
+                  fontSize: "11px",
+                }}
+              >
+                <span>{info.icon}</span>
+                {info.label}
+              </span>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Renders markdown content, replacing ```diff blocks with DiffViewer */
+function MarkdownWithDiff({ content }: { content: string }) {
+  // Split content by diff code blocks
+  const diffRegex = /```diff\n([\s\S]*?)```/g;
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match;
+
+  while ((match = diffRegex.exec(content)) !== null) {
+    // Text before the diff block
+    if (match.index > lastIndex) {
+      const textBefore = content.slice(lastIndex, match.index);
+      parts.push(
+        <div key={`text-${lastIndex}`} className="markdown-body" dangerouslySetInnerHTML={{ __html: renderMarkdown(textBefore) }} />
+      );
+    }
+
+    // The diff block itself
+    const diffContent = match[1];
+    const parsed = parseDiffBlock(diffContent);
+    if (parsed) {
+      parts.push(
+        <DiffViewer
+          key={`diff-${match.index}`}
+          oldText={parsed.oldText}
+          newText={parsed.newText}
+          oldLabel="Previous Version"
+          newLabel="Current Version"
+        />
+      );
+    } else {
+      // Fallback to code block
+      parts.push(
+        <div key={`code-${match.index}`} className="markdown-body" dangerouslySetInnerHTML={{
+          __html: `<pre><code>${diffContent}</code></pre>`
+        }} />
+      );
+    }
+
+    lastIndex = match.index + match[0].length;
+  }
+
+  // Remaining text after last diff block
+  if (lastIndex < content.length) {
+    parts.push(
+      <div key={`text-${lastIndex}`} className="markdown-body" dangerouslySetInnerHTML={{ __html: renderMarkdown(content.slice(lastIndex)) }} />
+    );
+  }
+
+  // If no diff blocks found, render normally
+  if (parts.length === 0) {
+    return <div className="markdown-body" dangerouslySetInnerHTML={{ __html: renderMarkdown(content) }} />;
+  }
+
+  return <>{parts}</>;
+}
+
 function EmptyState() {
   return (
     <div style={{
@@ -143,7 +238,7 @@ function EmptyState() {
       flexDirection: "column",
       alignItems: "center",
       justifyContent: "center",
-      minHeight: "400px",
+      minHeight: "420px",
       gap: "16px",
       textAlign: "center",
       padding: "40px 20px",
