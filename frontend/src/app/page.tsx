@@ -82,6 +82,7 @@ export default function Home() {
   const [scope, setScope] = useState<{ reference_date: string; domains: string[]; jurisdictions: string[] } | null>(null);
   const [showScopeSelector, setShowScopeSelector] = useState(false);
   const [streamingText, setStreamingText] = useState<string>("");
+  const [statusLogs, setStatusLogs] = useState<string[]>([]);
 
   // Helpers for localStorage-backed chat list
   const STORAGE_KEY_SUMMARIES = "templex_chat_summaries";
@@ -219,6 +220,22 @@ export default function Home() {
       return next;
     });
 
+    // Clear backend statuses and start polling
+    try {
+      await fetch(`${API_BASE}/api/chat/status/clear/${sessionId}`, { method: "POST" });
+    } catch { /* noop */ }
+    setStatusLogs([]);
+
+    const statusInterval = setInterval(async () => {
+      try {
+        const statusRes = await fetch(`${API_BASE}/api/chat/status/${sessionId}`);
+        if (statusRes.ok) {
+          const data = await statusRes.json();
+          setStatusLogs(data.logs || []);
+        }
+      } catch { /* noop */ }
+    }, 500);
+
     try {
       // Try streaming first
       const res = await fetch(`${API_BASE}/api/chat/stream`, {
@@ -242,7 +259,9 @@ export default function Home() {
         const assistantMsg: Message = {
           role: "assistant",
           content: data.response,
-          tool_calls: data.tool_calls,
+          tool_calls: data.tool_calls || [],
+          suggestions: data.suggestions || [],
+          timeline: data.timeline || null,
         };
         setMessages((prev) => {
           const next = [...prev, assistantMsg];
@@ -258,6 +277,8 @@ export default function Home() {
       const decoder = new TextDecoder();
       let accumulated = "";
       let finalToolCalls: ToolCall[] = [];
+      let finalTimeline: TimelineData | null = null;
+      let finalSuggestions: string[] = [];
       let buffer = "";
 
       while (true) {
@@ -281,6 +302,8 @@ export default function Home() {
             } else if (chunk.type === "done") {
               accumulated = chunk.content || accumulated;
               finalToolCalls = chunk.tool_calls || [];
+              finalTimeline = chunk.timeline || null;
+              finalSuggestions = chunk.suggestions || [];
             } else if (chunk.type === "error") {
               throw new Error(chunk.content);
             }
@@ -296,8 +319,8 @@ export default function Home() {
         role: "assistant",
         content: accumulated,
         tool_calls: finalToolCalls,
-        suggestions: [],
-        timeline: null,
+        suggestions: finalSuggestions,
+        timeline: finalTimeline,
       };
       setMessages((prev) => {
         const next = [...prev, assistantMsg];
@@ -330,6 +353,7 @@ export default function Home() {
         persistMessages(sessionId, next);
       }
     } finally {
+      clearInterval(statusInterval);
       setIsLoading(false);
     }
   };

@@ -18,6 +18,8 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from .config import get_hf_settings
 from .llm.tools import TEMPLEX_TOOLS, set_session_scope
 from .actions.scope import QueryScope
+from .status import push_status
+import time
 
 
 Role = Literal["user", "assistant"]
@@ -440,8 +442,18 @@ class TempLexChatAgent:
         max_iterations = 8
         courtlistener_fetched = False
         assistant_text = ""
+        pass_num = 0
+
+        # Log context size
+        prior_turns = len(history) // 2
+        sys_prompt_len = len(self._system_prompt + scope_note)
+        push_status(session_id, f"Built context: {prior_turns} prior turns, {sys_prompt_len} char system prompt")
 
         for _ in range(max_iterations):
+            pass_num += 1
+            model_short = self._hf_model.split("/")[-1] if "/" in self._hf_model else self._hf_model
+            push_status(session_id, f"Calling {model_short} (pass {pass_num}, {len(lc_messages)} messages)...")
+            t0 = time.time()
             try:
                 result = self._llm.invoke(lc_messages)
             except Exception as exc:
@@ -450,7 +462,9 @@ class TempLexChatAgent:
                     if self._try_switch_model():
                         continue
                 raise
+            elapsed = time.time() - t0
             assistant_text = getattr(result, "content", str(result))
+            push_status(session_id, f"LLM responded in {elapsed:.1f}s ({len(assistant_text)} chars)")
 
             json_match = re.search(r"```json\s*(.*?)\s*```", assistant_text, re.DOTALL)
 
@@ -460,12 +474,17 @@ class TempLexChatAgent:
                     tool_name = tool_request.get("tool")
                     tool_args = tool_request.get("args", {})
 
+                    # Show tool call in exact format from screenshot
+                    args_preview = str(tool_args)[:60] + "..." if len(str(tool_args)) > 60 else str(tool_args)
+                    push_status(session_id, f"Tool call: {tool_name}({args_preview})")
+
                     lc_messages.append(AIMessage(content=assistant_text))
 
-                    # Yield tool call event
+                    # Yield tool call event for frontend badge
                     yield {"type": "tool_call", "tool": tool_name, "input": str(tool_args)}
 
                     tool_out = "Tool not found."
+                    t_tool = time.time()
                     for t in TEMPLEX_TOOLS:
                         if t.name == tool_name:
                             try:
@@ -473,6 +492,10 @@ class TempLexChatAgent:
                             except Exception as e:
                                 tool_out = f"Error executing tool: {e}"
                             break
+                    tool_elapsed = time.time() - t_tool
+
+                    out_preview = str(tool_out)[:60] + "..." if len(str(tool_out)) > 60 else str(tool_out)
+                    push_status(session_id, f"← {tool_name} returned in {tool_elapsed:.1f}s: {out_preview}")
 
                     tool_calls_history.append({
                         "tool": tool_name,
@@ -483,6 +506,7 @@ class TempLexChatAgent:
                     if tool_name == "resolve_reference_tool" and "No matching provisions found" in str(tool_out):
                         if not courtlistener_fetched:
                             courtlistener_fetched = True
+                            push_status(session_id, "Local graph miss — routing to live data source")
                             observation = (
                                 f"Tool '{tool_name}' returned: {tool_out}\n\n"
                                 "SYSTEM COMMAND: The data is not in the local database. You must fetch it live.\n"
@@ -494,6 +518,7 @@ class TempLexChatAgent:
                             lc_messages.append(HumanMessage(content=observation))
                             continue
                         else:
+                            push_status(session_id, "Data not found in local DB or live sources")
                             assistant_text = (
                                 "I was unable to find relevant information about your query in either the local database "
                                 "or the live data sources."
@@ -501,6 +526,7 @@ class TempLexChatAgent:
                             break
 
                     observation = f"Tool '{tool_name}' returned:\n{tool_out}\n\nBased on this, either use another tool, or provide your final answer."
+                    push_status(session_id, f"Feeding {len(observation)} chars of tool output back to LLM...")
                     lc_messages.append(HumanMessage(content=observation))
                     continue
                 except json.JSONDecodeError:
@@ -508,8 +534,10 @@ class TempLexChatAgent:
                     lc_messages.append(HumanMessage(content="Your JSON was malformed. Please fix it and try again, or provide your final answer."))
                     continue
             else:
+                push_status(session_id, f"Streaming final response ({len(assistant_text)} chars)...")
                 break
         else:
+            push_status(session_id, f"Max iterations reached — forcing synthesis")
             lc_messages.append(SystemMessage(content=(
                 "You have used several tools. You MUST now stop calling tools and provide your "
                 "final answer to the user's question based on the information gathered so far. "
@@ -535,6 +563,46 @@ class TempLexChatAgent:
         for i in range(0, len(assistant_text), chunk_size):
             yield {"type": "token", "content": assistant_text[i:i + chunk_size]}
 
+        # ── Collect structured timeline data from tool calls ──────────────
+        timeline = None
+        for tc in tool_calls_history:
+            if tc["tool"] == "trace_history_tool":
+                # Re-run to get structured data (the tool output in history is text)
+                try:
+                    from .actions.causality import trace_causality
+                    trace_args = tc.get("input", "{}")
+                    if isinstance(trace_args, str):
+                        trace_args = json.loads(trace_args.replace("'", '"'))
+                    work_id = trace_args.get("work_id", "")
+                    if work_id:
+                        timeline = trace_causality(work_id)
+                except Exception:
+                    pass
+                break
+
+        # ── Generate follow-up suggestions ────────────────────────────────
+        suggestions = []
+        try:
+            push_status(session_id, "Generating follow-up suggestions...")
+            suggest_messages = [
+                SystemMessage(content=(
+                    "Based on the conversation, generate exactly 3 short follow-up questions "
+                    "the user might ask next. Output ONLY a JSON array of 3 strings, nothing else. "
+                    "Example: [\"What replaced this law?\", \"Show the full timeline\", \"Compare with BNS\"]"
+                )),
+                HumanMessage(content=f"User asked: {message}\n\nAssistant answered: {assistant_text[:500]}"),
+            ]
+            suggest_result = self._invoke_with_retry(suggest_messages)
+            suggest_text = getattr(suggest_result, "content", "")
+            # Extract JSON array from response
+            arr_match = re.search(r'\[.*?\]', suggest_text, re.DOTALL)
+            if arr_match:
+                parsed = json.loads(arr_match.group())
+                if isinstance(parsed, list):
+                    suggestions = [str(s).strip() for s in parsed[:3] if s]
+        except Exception as e:
+            pass  # Non-critical
+
         # Store in history
         assistant_msg: ChatMessage = {
             "role": "assistant",
@@ -544,7 +612,7 @@ class TempLexChatAgent:
         history.append({"role": "user", "content": message})
         history.append(assistant_msg)
 
-        yield {"type": "done", "content": assistant_text, "tool_calls": tool_calls_history}
+        yield {"type": "done", "content": assistant_text, "tool_calls": tool_calls_history, "timeline": timeline, "suggestions": suggestions}
 
 
 # Singleton used by the FastAPI server and CLI

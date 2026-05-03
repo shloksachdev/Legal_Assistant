@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { supabase, isAuthEnabled } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
 
 interface AuthContextValue {
@@ -25,6 +25,13 @@ export default function SessionWrapper({ children }: { children: React.ReactNode
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!supabase) {
+      // No Supabase configured — bypass auth (should not happen with .env.local set)
+      setUser({ id: "local-dev", email: "dev@localhost" } as User);
+      setLoading(false);
+      return;
+    }
+
     // Check current session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
@@ -40,8 +47,23 @@ export default function SessionWrapper({ children }: { children: React.ReactNode
     return () => subscription.unsubscribe();
   }, []);
 
+  // Redirect to /login when auth is enabled and there's no user after loading
+  useEffect(() => {
+    if (
+      isAuthEnabled &&
+      !loading &&
+      !user &&
+      typeof window !== "undefined" &&
+      !window.location.pathname.startsWith("/login")
+    ) {
+      window.location.replace("/login");
+    }
+  }, [user, loading]);
+
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    if (supabase) {
+      await supabase.auth.signOut();
+    }
     window.location.href = "/login";
   };
 

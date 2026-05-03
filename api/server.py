@@ -27,6 +27,7 @@ from templex.actions.aggregate import aggregate_impact
 from templex.db.connection import KuzuConnection
 from templex.db.schema import initialize_schema
 from templex.ingestion.graph_populator import load_seed_data
+from templex.status import get_status_logs, clear_status_logs
 
 app = FastAPI(
     title="TempLex GraphRAG",
@@ -135,9 +136,14 @@ async def get_scope_options():
 
 @app.post("/api/chat")
 async def chat(req: ChatRequest):
-    """Send a message and get a conversational response."""
+    """Send a message and get a conversational response.
+
+    Runs in a thread pool so the event loop stays free to serve
+    real-time status polling requests at /api/chat/status/{session_id}.
+    """
+    import asyncio
     try:
-        result = chat_agent.chat(req.session_id, req.message)
+        result = await asyncio.to_thread(chat_agent.chat, req.session_id, req.message)
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -169,6 +175,19 @@ async def get_history(session_id: str):
     """Get message history for a session."""
     messages = chat_agent.get_history(session_id)
     return {"session_id": session_id, "messages": messages}
+
+
+@app.get("/api/chat/status/{session_id}")
+async def get_chat_status(session_id: str):
+    """Return the current pipeline status logs for a session (for frontend polling)."""
+    return {"session_id": session_id, "logs": get_status_logs(session_id)}
+
+
+@app.post("/api/chat/status/clear/{session_id}")
+async def clear_chat_status(session_id: str):
+    """Clear pipeline status logs before a new turn."""
+    clear_status_logs(session_id)
+    return {"ok": True}
 
 
 # ── Graph Visualization Endpoint ─────────────────────────────────────────

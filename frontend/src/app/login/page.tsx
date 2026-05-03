@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { supabase } from "@/lib/supabase";
+import { supabase, isAuthEnabled } from "@/lib/supabase";
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -9,23 +9,21 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  // If user is already signed in, redirect to home
+  // Redirect to app if already signed in
   useEffect(() => {
+    if (!supabase) return;
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        window.location.href = "/";
-      }
+      if (session) window.location.href = "/";
     });
   }, []);
 
   const handleGoogleLogin = async () => {
+    if (!supabase) return;
     setIsLoading(true);
     setError(null);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/`,
-      },
+      options: { redirectTo: `${window.location.origin}/` },
     });
     if (error) {
       setError(error.message);
@@ -35,19 +33,17 @@ export default function LoginPage() {
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!supabase) return;
     if (!email.trim() || !password.trim()) {
       setError("Enter both email and password.");
       return;
     }
-
     setIsLoading(true);
     setError(null);
-
     const { error } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password,
     });
-
     if (error) {
       setError(error.message);
       setIsLoading(false);
