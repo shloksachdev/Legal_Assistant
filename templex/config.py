@@ -56,17 +56,14 @@ SCOPE_BOOST_VALIDITY     = 0.15   # Expression was ACTIVE on the reference_date
 SCOPE_BOOST_DOMAIN       = 0.10   # Work domain matches user's selected domains
 SCOPE_BOOST_JURISDICTION = 0.08   # Work jurisdiction matches user's selection
 
-<<<<<<< HEAD
 # ─── Autonomous Research Pipeline ──────────────────────────────────────────────
 MAX_SEARCH_QUERIES = 5
 MAX_INGEST_PER_TURN = 3
 CONFIDENCE_THRESHOLD = 0.65
-=======
 # ─── High-Confidence Research Pipeline ────────────────────────────────────
 # Used by the autonomous ingestion loop (fetch_indian_cases_tool / research_tool).
 INGESTION_CONFIDENCE_THRESHOLD = 0.65  # Min cosine+boost score to proceed with ingestion
 INGESTION_MAX_QUERIES     = 5          # Number of speculative query variants to generate
 INGESTION_MAX_SNIPPETS    = 50         # Max metadata snippets across all queries
 INGESTION_TOP_K_INGEST    = 3          # Only ingest the top-K highest-confidence documents
->>>>>>> c81960aca48e26c630237297394ef10a34e2a639
 

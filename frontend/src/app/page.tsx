@@ -614,9 +614,6 @@ export default function Home() {
               {(!sessionId || showScopeSelector) ? (
                 <ScopeSelector apiBase={API_BASE} onStart={handleStartSession} />
               ) : (
-<<<<<<< HEAD
-                <ChatInterface messages={messages} isLoading={isLoading} statusLogs={statusLogs} />
-=======
                 <ChatInterface
                   messages={messages}
                   isLoading={isLoading}
@@ -624,7 +621,6 @@ export default function Home() {
                   statusLogs={statusLogs}
                   onSuggestionClick={handleSend}
                 />
->>>>>>> c81960aca48e26c630237297394ef10a34e2a639
               )}
             </div>
           </div>

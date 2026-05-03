@@ -26,6 +26,12 @@ def set_session_state(session_id: str, scope) -> None:
     _current_session_id = session_id
 
 
+def set_session_scope(scope) -> None:
+    """Alias for setting scope only (maintains compatibility with chat_stream)."""
+    global _current_scope
+    _current_scope = scope
+
+
 def _get_scope():
     """Return the current session scope (may be None)."""
     return _current_scope

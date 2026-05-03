@@ -376,6 +376,21 @@ async def seed_database():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ── Status Polling Endpoints ──────────────────────────────────────────────
+
+@app.get("/api/chat/status/{session_id}")
+async def get_chat_status(session_id: str):
+    """Return the current pipeline status logs for a session (for frontend polling)."""
+    return {"session_id": session_id, "logs": get_statuses(session_id)}
+
+
+@app.post("/api/chat/status/clear/{session_id}")
+async def clear_chat_status(session_id: str):
+    """Clear pipeline status logs before a new turn."""
+    clear_statuses(session_id)
+    return {"ok": True}
+
+
 @app.on_event("startup")
 async def startup():
     """Initialize schema on server start."""

@@ -327,13 +327,9 @@ class TempLexChatAgent:
                                 "SYSTEM COMMAND: The data is not in the local database. You must fetch it live.\n"
                                 "JURISDICTION ROUTING RULES:\n"
                                 "- If the query is about Indian law (Constitution, IPC, BNS, Indian SC/HC cases, Indian amendments) "
-<<<<<<< HEAD
-                                "→ use 'fetch_indian_cases_tool' and provide an array of 3-5 diverse boolean queries in the 'queries' argument (e.g. [\"q1\", \"q2\", \"q3\"]).\n"
-=======
                                 "→ use 'autonomous_research_tool' with the user's original question. "
                                 "This will automatically expand queries, fetch metadata, re-rank with confidence scoring, "
                                 "and ingest only the highest-quality documents.\n"
->>>>>>> c81960aca48e26c630237297394ef10a34e2a639
                                 "- If the query is about US law → use 'fetch_live_cases_tool'.\n"
                                 "Do NOT attempt to answer yet. ONLY output the JSON tool call now."
                             )
