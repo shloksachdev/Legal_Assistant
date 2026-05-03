@@ -15,8 +15,8 @@ from uuid import uuid4
 from langchain_huggingface import HuggingFaceEndpoint, ChatHuggingFace
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
-from .config import HF_MODEL, HF_TOKEN
-from .llm.tools import TEMPLEX_TOOLS, set_session_state
+from .config import get_hf_settings
+from .llm.tools import TEMPLEX_TOOLS, set_session_scope
 from .actions.scope import QueryScope
 from .status import push_status
 
@@ -40,19 +40,13 @@ class TempLexChatAgent:
     """Lightweight in‑memory chat agent with session history."""
 
     def __init__(self) -> None:
-        if not HF_TOKEN:
-            raise RuntimeError(
-                "HF_TOKEN is not set. Please configure your Hugging Face token in the environment."
-            )
+        self._hf_token = ""
+        self._hf_model = ""
+        self._model_candidates: List[str] = []
+        self._llm: ChatHuggingFace | None = None
+        self._current_model_idx = 0
 
-        base_llm = HuggingFaceEndpoint(
-            repo_id=HF_MODEL,
-            huggingfacehub_api_token=HF_TOKEN,
-            max_new_tokens=512,
-            temperature=0.2,
-        )
-
-        self._llm = ChatHuggingFace(llm=base_llm)
+        self._refresh_runtime_settings(force=True)
 
         # Each session stores {"history": [...], "scope": QueryScope | None}
         self._sessions: Dict[str, Dict[str, Any]] = {}
@@ -119,6 +113,53 @@ class TempLexChatAgent:
             "- Bharatiya Nyaya Sanhita, 2023 (Act No. 45 of 2023)\n"
         )
 
+    def _refresh_runtime_settings(self, force: bool = False) -> None:
+        token, model, fallback_models = get_hf_settings()
+
+        candidates: List[str] = []
+        for candidate in [model, *fallback_models]:
+            if candidate and candidate not in candidates:
+                candidates.append(candidate)
+
+        should_rebuild = (
+            force
+            or token != self._hf_token
+            or candidates != self._model_candidates
+            or self._llm is None
+        )
+
+        self._hf_token = token
+        self._hf_model = model
+        self._model_candidates = candidates
+
+        if should_rebuild:
+            self._current_model_idx = 0
+            self._llm = self._build_llm(self._model_candidates[0]) if self._model_candidates and self._hf_token else None
+
+    def _ensure_llm(self) -> None:
+        self._refresh_runtime_settings()
+        if self._llm is None:
+            raise RuntimeError(
+                "HF_TOKEN is not set. Add it to .env and restart the backend, then try again."
+            )
+
+    def _build_llm(self, model_id: str) -> ChatHuggingFace:
+        base_llm = HuggingFaceEndpoint(
+            repo_id=model_id,
+            huggingfacehub_api_token=self._hf_token,
+            max_new_tokens=512,
+            temperature=0.2,
+            timeout=45,
+        )
+        return ChatHuggingFace(llm=base_llm)
+
+    def _try_switch_model(self) -> bool:
+        if self._current_model_idx + 1 >= len(self._model_candidates):
+            return False
+        self._current_model_idx += 1
+        self._llm = self._build_llm(self._model_candidates[self._current_model_idx])
+        return True
+
     # ── Session management -------------------------------------------------
     def create_session(self, scope: "QueryScope | None" = None) -> str:
         """Create a new chat session and return its ID."""
@@ -140,6 +181,8 @@ class TempLexChatAgent:
         """Send a message in a session and get the model response."""
         if not session_id:
             raise ValueError("session_id is required")
+
+        self._ensure_llm()
 
         if session_id not in self._sessions:
             self._sessions[session_id] = {"history": [], "scope": None}
@@ -178,10 +221,11 @@ class TempLexChatAgent:
         lc_messages.append(SystemMessage(content=(
             "REMINDER — CRITICAL RULES FOR THIS TURN:\n"
             "1. ALWAYS use 'resolve_reference_tool' first to search the local database.\n"
-            "2. If the local search fails ('No matching provisions found'), use 'fetch_live_cases_tool' with a precise boolean legal query.\n"
-            "3. Format your final answer with: Markdown headings, bullet points for key facts, and clickable source links at the very bottom.\n"
-            "4. Be EXTREMELY relevant to the user's exact question. Do NOT dump unrelated legal text.\n"
-            "5. NEVER answer from internal knowledge if the tool returns no results."
+            "2. If the query is about Indian law and the local search fails, use 'fetch_indian_cases_tool' first, then 'ingest_document_tool' for the most relevant tid.\n"
+            "3. If the query is about US law and the local search fails, use 'fetch_live_cases_tool'.\n"
+            "4. Format your final answer with: Markdown headings, bullet points for key facts, and clickable source links at the very bottom.\n"
+            "5. Be EXTREMELY relevant to the user's exact question. Do NOT dump unrelated legal text.\n"
+            "6. NEVER answer from internal knowledge if the tool returns no results."
         )))
         lc_messages.append(HumanMessage(content=message))
 
@@ -192,7 +236,14 @@ class TempLexChatAgent:
         
         for _ in range(max_iterations):
             # Call the LLM
-            result = self._llm.invoke(lc_messages)
+            try:
+                result = self._llm.invoke(lc_messages)
+            except Exception as exc:
+                err_text = str(exc)
+                if "model_not_supported" in err_text or "not supported by any provider" in err_text:
+                    if self._try_switch_model():
+                        continue
+                raise
             
             assistant_text = getattr(result, "content", str(result))
             
@@ -231,13 +282,20 @@ class TempLexChatAgent:
                     if tool_name == "resolve_reference_tool" and "No matching provisions found" in str(tool_out):
                         if not courtlistener_fetched:
                             courtlistener_fetched = True
-                            # Route by jurisdiction: Indian queries → Indian Kanoon, US queries → CourtListener
+                            # Route by jurisdiction: Indian queries → autonomous_research_tool (full pipeline),
+                            # US queries → fetch_live_cases_tool
                             observation = (
                                 f"Tool '{tool_name}' returned: {tool_out}\n\n"
                                 "SYSTEM COMMAND: The data is not in the local database. You must fetch it live.\n"
                                 "JURISDICTION ROUTING RULES:\n"
                                 "- If the query is about Indian law (Constitution, IPC, BNS, Indian SC/HC cases, Indian amendments) "
+<<<<<<< HEAD
                                 "→ use 'fetch_indian_cases_tool' and provide an array of 3-5 diverse boolean queries in the 'queries' argument (e.g. [\"q1\", \"q2\", \"q3\"]).\n"
+=======
+                                "→ use 'autonomous_research_tool' with the user's original question. "
+                                "This will automatically expand queries, fetch metadata, re-rank with confidence scoring, "
+                                "and ingest only the highest-quality documents.\n"
+>>>>>>> c81960aca48e26c630237297394ef10a34e2a639
                                 "- If the query is about US law → use 'fetch_live_cases_tool'.\n"
                                 "Do NOT attempt to answer yet. ONLY output the JSON tool call now."
                             )
@@ -289,10 +347,213 @@ class TempLexChatAgent:
         history.append({"role": "user", "content": message})
         history.append(assistant_msg)
 
+        # ── Generate follow-up suggestions ────────────────────────────────
+        suggestions = []
+        try:
+            push_status(session_id, "Generating follow-up suggestions...")
+            suggest_messages = [
+                SystemMessage(content=(
+                    "Based on the conversation, generate exactly 3 short follow-up questions "
+                    "the user might ask next. Output ONLY a JSON array of 3 strings, nothing else. "
+                    "Example: [\"What replaced this law?\", \"Show the full timeline\", \"Compare with BNS\"]"
+                )),
+                HumanMessage(content=f"User asked: {message}\n\nAssistant answered: {assistant_text[:500]}"),
+            ]
+            suggest_result = self._invoke_with_retry(suggest_messages)
+            suggest_text = getattr(suggest_result, "content", "")
+            # Extract JSON array from response
+            arr_match = re.search(r'\[.*?\]', suggest_text, re.DOTALL)
+            if arr_match:
+                parsed = json.loads(arr_match.group())
+                if isinstance(parsed, list):
+                    suggestions = [str(s).strip() for s in parsed[:3] if s]
+        except Exception as e:
+            print(f"  [TempLex] Suggestion generation failed (non-critical): {e}")
+
+        # ── Collect structured timeline data from tool calls ──────────────
+        timeline = None
+        for tc in tool_calls_history:
+            if tc["tool"] == "trace_history_tool":
+                # Re-run to get structured data (the tool output in history is text)
+                try:
+                    from .actions.causality import trace_causality
+                    trace_args = tc.get("input", "{}")
+                    if isinstance(trace_args, str):
+                        trace_args = json.loads(trace_args.replace("'", '"'))
+                    work_id = trace_args.get("work_id", "")
+                    if work_id:
+                        timeline = trace_causality(work_id)
+                except Exception:
+                    pass
+                break
+
         return {
             "response": assistant_text,
             "tool_calls": tool_calls_history,
+            "suggestions": suggestions,
+            "timeline": timeline,
         }
+
+    # ── Streaming Chat API ------------------------------------------------
+    def chat_stream(self, session_id: str, message: str):
+        """Generator version of chat() that yields chunks for SSE streaming.
+
+        Yields dicts with:
+          {"type": "token",     "content": "..."}      — text chunk
+          {"type": "tool_call", "tool": "...", ...}     — tool invocation event
+          {"type": "done",      "content": "...", ...}  — final signal
+        """
+        if not session_id:
+            raise ValueError("session_id is required")
+
+        self._ensure_llm()
+
+        if session_id not in self._sessions:
+            self._sessions[session_id] = {"history": [], "scope": None}
+
+        session = self._sessions[session_id]
+        history = session["history"]
+        scope   = session.get("scope")
+
+        from .llm.tools import set_session_scope
+        set_session_scope(scope)
+
+        scope_note = ""
+        if scope:
+            scope_note = (
+                f"\n\nSESSION SCOPE: The user is viewing law as of {scope.reference_date}. "
+                f"In-scope active results are ranked higher but all history and "
+                f"cross-domain results remain accessible. {scope.describe()}"
+            )
+
+        lc_messages: List[Any] = [SystemMessage(content=self._system_prompt + scope_note)]
+
+        for msg in history:
+            if msg["role"] == "user":
+                lc_messages.append(HumanMessage(content=msg["content"]))
+            else:
+                lc_messages.append(AIMessage(content=msg["content"]))
+
+        lc_messages.append(SystemMessage(content=(
+            "REMINDER — CRITICAL RULES FOR THIS TURN:\n"
+            "1. ALWAYS use 'resolve_reference_tool' first to search the local database.\n"
+                "2. If the query is about Indian law and the local search fails, use 'fetch_indian_cases_tool' first, then 'ingest_document_tool' for the most relevant tid.\n"
+                "3. If the query is about US law and the local search fails, use 'fetch_live_cases_tool'.\n"
+                "4. Format your final answer with: Markdown headings, bullet points for key facts, and clickable source links at the very bottom.\n"
+                "5. Be EXTREMELY relevant to the user's exact question. Do NOT dump unrelated legal text.\n"
+                "6. NEVER answer from internal knowledge if the tool returns no results."
+        )))
+        lc_messages.append(HumanMessage(content=message))
+
+        tool_calls_history = []
+        max_iterations = 8
+        courtlistener_fetched = False
+        assistant_text = ""
+
+        for _ in range(max_iterations):
+            try:
+                result = self._llm.invoke(lc_messages)
+            except Exception as exc:
+                err_text = str(exc)
+                if "model_not_supported" in err_text or "not supported by any provider" in err_text:
+                    if self._try_switch_model():
+                        continue
+                raise
+            assistant_text = getattr(result, "content", str(result))
+
+            json_match = re.search(r"```json\s*(.*?)\s*```", assistant_text, re.DOTALL)
+
+            if json_match:
+                try:
+                    tool_request = json.loads(json_match.group(1))
+                    tool_name = tool_request.get("tool")
+                    tool_args = tool_request.get("args", {})
+
+                    lc_messages.append(AIMessage(content=assistant_text))
+
+                    # Yield tool call event
+                    yield {"type": "tool_call", "tool": tool_name, "input": str(tool_args)}
+
+                    tool_out = "Tool not found."
+                    for t in TEMPLEX_TOOLS:
+                        if t.name == tool_name:
+                            try:
+                                tool_out = t.invoke(tool_args)
+                            except Exception as e:
+                                tool_out = f"Error executing tool: {e}"
+                            break
+
+                    tool_calls_history.append({
+                        "tool": tool_name,
+                        "input": str(tool_args),
+                        "output_preview": str(tool_out)[:100] + "..." if len(str(tool_out)) > 100 else str(tool_out)
+                    })
+
+                    if tool_name == "resolve_reference_tool" and "No matching provisions found" in str(tool_out):
+                        if not courtlistener_fetched:
+                            courtlistener_fetched = True
+                            observation = (
+                                f"Tool '{tool_name}' returned: {tool_out}\n\n"
+                                "SYSTEM COMMAND: The data is not in the local database. You must fetch it live.\n"
+                                "JURISDICTION ROUTING RULES:\n"
+                                "- If the query is about Indian law → use 'autonomous_research_tool' with the user's original question.\n"
+                                "- If the query is about US law → use 'fetch_live_cases_tool'.\n"
+                                "Do NOT attempt to answer yet. ONLY output the JSON tool call now."
+                            )
+                            lc_messages.append(HumanMessage(content=observation))
+                            continue
+                        else:
+                            assistant_text = (
+                                "I was unable to find relevant information about your query in either the local database "
+                                "or the live data sources."
+                            )
+                            break
+
+                    observation = f"Tool '{tool_name}' returned:\n{tool_out}\n\nBased on this, either use another tool, or provide your final answer."
+                    lc_messages.append(HumanMessage(content=observation))
+                    continue
+                except json.JSONDecodeError:
+                    lc_messages.append(AIMessage(content=assistant_text))
+                    lc_messages.append(HumanMessage(content="Your JSON was malformed. Please fix it and try again, or provide your final answer."))
+                    continue
+            else:
+                break
+        else:
+            lc_messages.append(SystemMessage(content=(
+                "You have used several tools. You MUST now stop calling tools and provide your "
+                "final answer to the user's question based on the information gathered so far. "
+                "Do NOT output any JSON. Write your final answer now."
+            )))
+            try:
+                force_result = self._llm.invoke(lc_messages)
+            except Exception as exc:
+                err_text = str(exc)
+                if "model_not_supported" in err_text or "not supported by any provider" in err_text:
+                    if self._try_switch_model():
+                        force_result = self._llm.invoke(lc_messages)
+                    else:
+                        raise
+                else:
+                    raise
+            assistant_text = getattr(force_result, "content", str(force_result))
+            if "```json" in assistant_text:
+                assistant_text = "I gathered information but was unable to synthesize a final answer. Please try rephrasing your question."
+
+        # Stream the final text in chunks
+        chunk_size = 12
+        for i in range(0, len(assistant_text), chunk_size):
+            yield {"type": "token", "content": assistant_text[i:i + chunk_size]}
+
+        # Store in history
+        assistant_msg: ChatMessage = {
+            "role": "assistant",
+            "content": assistant_text,
+            "tool_calls": tool_calls_history,
+        }
+        history.append({"role": "user", "content": message})
+        history.append(assistant_msg)
+
+        yield {"type": "done", "content": assistant_text, "tool_calls": tool_calls_history}
 
 
 # Singleton used by the FastAPI server and CLI

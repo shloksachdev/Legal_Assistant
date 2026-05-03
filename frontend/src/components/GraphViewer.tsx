@@ -2,14 +2,6 @@
 
 import React from "react";
 
-interface GraphNode {
-  work_id?: string;
-  title?: string;
-  work_type?: string;
-  expr_id?: string;
-  action_id?: string;
-}
-
 interface SchemaStats {
   nodes: {
     works: number;

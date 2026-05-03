@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useRef, useEffect } from "react";
+import DiffViewer, { parseDiffBlock } from "./DiffViewer";
+import ProvenanceTimeline from "./ProvenanceTimeline";
 
 interface ToolCall {
   tool: string;
@@ -12,107 +14,91 @@ interface Message {
   role: "user" | "assistant";
   content: string;
   tool_calls?: ToolCall[];
+  suggestions?: string[];
+  timeline?: any;
 }
 
 interface ChatInterfaceProps {
   messages: Message[];
   isLoading: boolean;
   statusLogs?: string[];
+<<<<<<< HEAD
+=======
+  streamingText?: string;
+  onSuggestionClick?: (suggestion: string) => void;
+>>>>>>> c81960aca48e26c630237297394ef10a34e2a639
 }
 
 const TOOL_LABELS: Record<string, { label: string; icon: string; color: string }> = {
   resolve_legal_reference: { label: "Resolve", icon: "🔍", color: "var(--accent-blue)" },
+  resolve_reference_tool: { label: "Resolve", icon: "🔍", color: "var(--accent-blue)" },
   get_version_at_date: { label: "Temporal", icon: "📅", color: "var(--accent-green)" },
+  get_version_tool: { label: "Temporal", icon: "📅", color: "var(--accent-green)" },
   trace_legislative_history: { label: "Trace", icon: "🔗", color: "var(--accent-purple)" },
+  trace_history_tool: { label: "Trace", icon: "🔗", color: "var(--accent-purple)" },
   aggregate_legislative_impact: { label: "Impact", icon: "⚡", color: "var(--accent-orange)" },
+  aggregate_impact_tool: { label: "Impact", icon: "⚡", color: "var(--accent-orange)" },
+  fetch_live_cases_tool: { label: "Live US", icon: "🌐", color: "#3b82f6" },
+  fetch_indian_cases_tool: { label: "Live India", icon: "🇮🇳", color: "#f59e0b" },
+  ingest_document_tool: { label: "Ingest", icon: "📥", color: "#8b5cf6" },
 };
 
+<<<<<<< HEAD
 export default function ChatInterface({ messages, isLoading, statusLogs = [] }: ChatInterfaceProps) {
+=======
+export default function ChatInterface({ messages, isLoading, statusLogs = [], streamingText, onSuggestionClick }: ChatInterfaceProps) {
+>>>>>>> c81960aca48e26c630237297394ef10a34e2a639
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+<<<<<<< HEAD
   }, [messages, isLoading, statusLogs]);
+=======
+  }, [messages, isLoading, streamingText, statusLogs]);
+>>>>>>> c81960aca48e26c630237297394ef10a34e2a639
 
-  if (messages.length === 0 && !isLoading) {
+  if (messages.length === 0 && !isLoading && !streamingText) {
     return <EmptyState />;
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "16px", padding: "16px 0" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "16px", padding: "20px 0 12px 0", width: "100%" }}>
       {messages.map((msg, i) => (
-        <div
-          key={i}
-          className="animate-fade-in"
-          style={{
-            animationDelay: `${Math.min(i * 50, 300)}ms`,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: msg.role === "user" ? "flex-end" : "flex-start",
-            gap: "6px",
-          }}
-        >
-          {/* Role label */}
-          <span style={{
-            fontSize: "11px",
-            fontWeight: 600,
-            color: msg.role === "user" ? "var(--text-muted)" : "var(--accent-blue)",
-            textTransform: "uppercase",
-            letterSpacing: "0.5px",
-            padding: "0 4px",
-          }}>
-            {msg.role === "user" ? "You" : "TempLex"}
-          </span>
-
-          {/* Message bubble */}
-          <div style={{
-            maxWidth: msg.role === "user" ? "70%" : "90%",
-            background: msg.role === "user" ? "var(--accent-blue)" : "var(--bg-secondary)",
-            border: `1px solid ${msg.role === "user" ? "rgba(88,166,255,0.2)" : "var(--border-default)"}`,
-            borderRadius: msg.role === "user" ? "32px 32px 8px 32px" : "32px 32px 32px 8px",
-            padding: "12px 18px",
-          }}>
-            {msg.role === "assistant" ? (
-              <div className="markdown-body" dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
-            ) : (
-              <p style={{ fontSize: "14px", color: "var(--text-primary)", lineHeight: "1.5" }}>{msg.content}</p>
-            )}
-          </div>
-
-          {/* Tool calls */}
-          {msg.tool_calls && msg.tool_calls.length > 0 && (
-            <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", padding: "0 4px" }}>
-              {msg.tool_calls.map((tc, j) => {
-                const info = TOOL_LABELS[tc.tool] || { label: tc.tool, icon: "🔧", color: "var(--text-muted)" };
-                return (
-                  <span
-                    key={j}
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "4px",
-                      background: `${info.color}15`,
-                      color: info.color,
-                      border: `1px solid ${info.color}30`,
-                      borderRadius: "9999px",
-                      fontWeight: 500,
-                      // background: `${info.color}15`,
-                      // color: info.color,
-                      // border: `1px solid ${info.color}30`,
-                    }}
-                  >
-                    <span>{info.icon}</span>
-                    {info.label}
-                  </span>
-                );
-              })}
-            </div>
-          )}
-        </div>
+        <MessageBubble key={i} msg={msg} index={i} isLoading={isLoading} onSuggestionClick={onSuggestionClick} />
       ))}
 
+<<<<<<< HEAD
       {/* Typing & Status Log indicator */}
       {isLoading && (
+=======
+      {/* Streaming text */}
+      {streamingText && (
+        <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "6px" }}>
+          <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--accent-blue)", textTransform: "uppercase", letterSpacing: "0.5px", padding: "0 4px" }}>
+            TempLex
+          </span>
+          <div style={{
+            maxWidth: "90%",
+            background: "var(--bg-secondary)",
+            border: "1px solid var(--border-default)",
+            borderRadius: "32px 32px 32px 8px",
+            padding: "12px 18px",
+          }}>
+            <div className="markdown-body" dangerouslySetInnerHTML={{ __html: renderMarkdown(streamingText) }} />
+            <span style={{
+              display: "inline-block", width: "8px", height: "16px",
+              background: "var(--accent-blue)",
+              animation: "blink 1s step-end infinite",
+              marginLeft: "2px", verticalAlign: "bottom", borderRadius: "1px",
+            }} />
+          </div>
+        </div>
+      )}
+
+      {/* Pipeline Status Indicator */}
+      {isLoading && !streamingText && (
+>>>>>>> c81960aca48e26c630237297394ef10a34e2a639
         <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "6px" }}>
           <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--accent-blue)", textTransform: "uppercase", letterSpacing: "0.5px", padding: "0 4px" }}>
             TempLex
@@ -121,9 +107,10 @@ export default function ChatInterface({ messages, isLoading, statusLogs = [] }: 
             background: "var(--bg-secondary)",
             border: "1px solid var(--border-default)",
             borderRadius: "32px 32px 32px 8px",
-            padding: "14px 20px",
+            padding: "16px 20px",
             display: "flex",
             flexDirection: "column",
+<<<<<<< HEAD
             gap: "8px",
             minWidth: "250px",
           }}>
@@ -154,6 +141,93 @@ export default function ChatInterface({ messages, isLoading, statusLogs = [] }: 
               <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                 <span className="spinner" style={{ width: "14px", height: "14px" }} />
                 <span style={{ fontSize: "13px", color: "var(--text-muted)" }}>Reasoning with graph traversal...</span>
+=======
+            gap: "6px",
+            minWidth: "320px",
+            maxWidth: "500px",
+          }}>
+            {/* Pipeline header */}
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: "4px",
+            }}>
+              <span style={{
+                fontSize: "10px",
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "1px",
+                color: "var(--accent-blue)",
+              }}>
+                {statusLogs.length > 0 ? "Pipeline Active" : "Initializing"}
+              </span>
+              <span style={{
+                fontSize: "10px",
+                fontFamily: "monospace",
+                color: "var(--text-muted)",
+              }}>
+                {statusLogs.length > 0 ? `${statusLogs.length} step${statusLogs.length !== 1 ? "s" : ""}` : ""}
+              </span>
+            </div>
+
+            {/* Progress bar */}
+            <div style={{
+              height: "2px",
+              background: "var(--border-muted)",
+              borderRadius: "1px",
+              overflow: "hidden",
+              marginBottom: "4px",
+            }}>
+              <div style={{
+                height: "100%",
+                background: "linear-gradient(90deg, var(--accent-blue), var(--accent-purple, #bc8cff))",
+                borderRadius: "1px",
+                animation: "pulse-width 2s ease-in-out infinite",
+              }} />
+            </div>
+
+            {/* Status log entries */}
+            {statusLogs.length > 0 ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+                {statusLogs.map((log, idx) => {
+                  const isLatest = idx === statusLogs.length - 1;
+                  return (
+                    <div key={`${idx}-${log}`} style={{
+                      fontSize: "12px",
+                      fontFamily: "'SF Mono', 'Fira Code', monospace",
+                      color: isLatest ? "var(--text-primary)" : "var(--text-muted)",
+                      opacity: isLatest ? 1 : 0.55,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      padding: "2px 0",
+                      animation: isLatest ? "fade-in 0.3s ease-out" : "none",
+                      transition: "opacity 0.3s ease, color 0.3s ease",
+                    }}>
+                      {isLatest ? (
+                        <span className="spinner" style={{ width: "10px", height: "10px", flexShrink: 0 }} />
+                      ) : (
+                        <span style={{ color: "var(--accent-green)", fontSize: "11px", flexShrink: 0, width: "10px", textAlign: "center" }}>✓</span>
+                      )}
+                      <span style={{
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}>
+                        {log}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "2px 0" }}>
+                <span className="spinner" style={{ width: "12px", height: "12px" }} />
+                <span style={{ fontSize: "12px", fontFamily: "'SF Mono', 'Fira Code', monospace", color: "var(--text-muted)" }}>
+                  Connecting to reasoning engine...
+                </span>
+>>>>>>> c81960aca48e26c630237297394ef10a34e2a639
               </div>
             )}
           </div>
@@ -165,6 +239,185 @@ export default function ChatInterface({ messages, isLoading, statusLogs = [] }: 
   );
 }
 
+function MessageBubble({ msg, index, isLoading, onSuggestionClick }: { msg: Message; index: number; isLoading: boolean; onSuggestionClick?: (s: string) => void }) {
+  const isUser = msg.role === "user";
+
+  return (
+    <div
+      className="animate-fade-in"
+      style={{
+        animationDelay: `${Math.min(index * 50, 300)}ms`,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: isUser ? "flex-end" : "flex-start",
+        gap: "6px",
+        width: "100%",
+      }}
+    >
+      {/* Role label */}
+      <span style={{
+        fontSize: "11px", fontWeight: 600,
+        color: isUser ? "var(--text-muted)" : "var(--accent-blue)",
+        textTransform: "uppercase", letterSpacing: "0.5px",
+        padding: "0 4px",
+      }}>
+        {isUser ? "You" : "TempLex"}
+      </span>
+
+      {/* Message bubble */}
+      <div style={{
+        maxWidth: isUser ? "72%" : "86%",
+        width: "fit-content",
+        background: isUser ? "var(--accent-blue)" : "var(--bg-secondary)",
+        border: `1px solid ${isUser ? "rgba(88,166,255,0.2)" : "var(--border-default)"}`,
+        borderRadius: isUser ? "32px 32px 8px 32px" : "32px 32px 32px 8px",
+        padding: "12px 18px",
+        boxShadow: "0 10px 24px rgba(0,0,0,0.18)",
+      }}>
+        {!isUser ? (
+          <MarkdownWithDiff content={msg.content} />
+        ) : (
+          <p style={{ fontSize: "14px", color: "var(--text-primary)", lineHeight: "1.5" }}>{msg.content}</p>
+        )}
+      </div>
+
+      {/* Tool calls */}
+      {msg.tool_calls && msg.tool_calls.length > 0 && (
+        <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", padding: "0 4px", maxWidth: "100%" }}>
+          {msg.tool_calls.map((tc, j) => {
+            const info = TOOL_LABELS[tc.tool] || { label: tc.tool, icon: "🔧", color: "var(--text-muted)" };
+            return (
+              <span
+                key={j}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: "4px",
+                  padding: "3px 10px",
+                  background: `${info.color}15`,
+                  color: info.color,
+                  border: `1px solid ${info.color}30`,
+                  borderRadius: "9999px",
+                  fontWeight: 500,
+                  fontSize: "11px",
+                }}
+              >
+                <span>{info.icon}</span>
+                {info.label}
+              </span>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Provenance Timeline */}
+      {msg.timeline && msg.timeline.events && msg.timeline.events.length > 0 && (
+        <div style={{ maxWidth: "90%", marginTop: "4px" }}>
+          <ProvenanceTimeline
+            events={msg.timeline.events}
+            workTitle={msg.timeline.work_title}
+            workId={msg.timeline.work_id}
+            totalVersions={msg.timeline.total_versions}
+          />
+        </div>
+      )}
+
+      {/* Follow-up Suggestions */}
+      {!isUser && msg.suggestions && msg.suggestions.length > 0 && !isLoading && (
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", padding: "0 4px", maxWidth: "90%" }}>
+          {msg.suggestions.map((s, j) => (
+            <button
+              key={j}
+              onClick={() => onSuggestionClick?.(s)}
+              style={{
+                background: "var(--bg-tertiary)",
+                border: "1px solid var(--border-default)",
+                borderRadius: "9999px",
+                padding: "6px 14px",
+                fontSize: "12px",
+                color: "var(--text-secondary)",
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                maxWidth: "280px",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = "var(--accent-blue)";
+                e.currentTarget.style.color = "var(--accent-blue)";
+                e.currentTarget.style.background = "var(--accent-blue-muted)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = "var(--border-default)";
+                e.currentTarget.style.color = "var(--text-secondary)";
+                e.currentTarget.style.background = "var(--bg-tertiary)";
+              }}
+            >
+              ✨ {s}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Renders markdown content, replacing ```diff blocks with DiffViewer */
+function MarkdownWithDiff({ content }: { content: string }) {
+  // Split content by diff code blocks
+  const diffRegex = /```diff\n([\s\S]*?)```/g;
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match;
+
+  while ((match = diffRegex.exec(content)) !== null) {
+    // Text before the diff block
+    if (match.index > lastIndex) {
+      const textBefore = content.slice(lastIndex, match.index);
+      parts.push(
+        <div key={`text-${lastIndex}`} className="markdown-body" dangerouslySetInnerHTML={{ __html: renderMarkdown(textBefore) }} />
+      );
+    }
+
+    // The diff block itself
+    const diffContent = match[1];
+    const parsed = parseDiffBlock(diffContent);
+    if (parsed) {
+      parts.push(
+        <DiffViewer
+          key={`diff-${match.index}`}
+          oldText={parsed.oldText}
+          newText={parsed.newText}
+          oldLabel="Previous Version"
+          newLabel="Current Version"
+        />
+      );
+    } else {
+      // Fallback to code block
+      parts.push(
+        <div key={`code-${match.index}`} className="markdown-body" dangerouslySetInnerHTML={{
+          __html: `<pre><code>${diffContent}</code></pre>`
+        }} />
+      );
+    }
+
+    lastIndex = match.index + match[0].length;
+  }
+
+  // Remaining text after last diff block
+  if (lastIndex < content.length) {
+    parts.push(
+      <div key={`text-${lastIndex}`} className="markdown-body" dangerouslySetInnerHTML={{ __html: renderMarkdown(content.slice(lastIndex)) }} />
+    );
+  }
+
+  // If no diff blocks found, render normally
+  if (parts.length === 0) {
+    return <div className="markdown-body" dangerouslySetInnerHTML={{ __html: renderMarkdown(content) }} />;
+  }
+
+  return <>{parts}</>;
+}
+
 function EmptyState() {
   return (
     <div style={{
@@ -172,7 +425,7 @@ function EmptyState() {
       flexDirection: "column",
       alignItems: "center",
       justifyContent: "center",
-      minHeight: "400px",
+      minHeight: "420px",
       gap: "16px",
       textAlign: "center",
       padding: "40px 20px",

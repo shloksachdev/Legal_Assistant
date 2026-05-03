@@ -5,6 +5,7 @@ import React, { useState } from "react";
 interface ChatInputProps {
   onSend: (message: string) => void;
   isLoading: boolean;
+  showSuggestions?: boolean;
 }
 
 const SUGGESTIONS = [
@@ -14,7 +15,7 @@ const SUGGESTIONS = [
   "How has the rape law in India evolved?",
 ];
 
-export default function ChatInput({ onSend, isLoading }: ChatInputProps) {
+export default function ChatInput({ onSend, isLoading, showSuggestions = true }: ChatInputProps) {
   const [message, setMessage] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -38,19 +39,21 @@ export default function ChatInput({ onSend, isLoading }: ChatInputProps) {
       background: "var(--bg-secondary)",
       padding: "16px 20px",
     }}>
-      {/* Suggestions (only show when no messages have been sent yet) */}
-      <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginBottom: "10px" }}>
-        {SUGGESTIONS.map((s, i) => (
-          <button
-            key={i}
-            onClick={() => { setMessage(s); }}
-            className="btn-secondary"
-            style={{ fontSize: "11px", padding: "3px 8px" }}
-          >
-            {s.length > 50 ? s.slice(0, 50) + "…" : s}
-          </button>
-        ))}
-      </div>
+      {/* Suggestions */}
+      {showSuggestions && (
+        <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginBottom: "10px", maxHeight: "56px", overflow: "hidden" }}>
+          {SUGGESTIONS.map((s, i) => (
+            <button
+              key={i}
+              onClick={() => { setMessage(s); }}
+              className="btn-secondary"
+              style={{ fontSize: "11px", padding: "3px 8px" }}
+            >
+              {s.length > 50 ? s.slice(0, 50) + "…" : s}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Input bar */}
       <form onSubmit={handleSubmit} style={{ display: "flex", gap: "10px", alignItems: "flex-end" }}>
