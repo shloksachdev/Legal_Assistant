@@ -1,0 +1,72 @@
+[
+  {
+    "id": "T001",
+    "question": "What was the sedition law in India before 2024?",
+    "system_answer": "Based on the available information, the sedition law in India before 2024 was primarily codified in Section 124A of the Indian Penal Code (IPC).\n\n### Section 124A of the Indian Penal Code (IPC) - Sedition (Before 2024)\n- **Section 124A of the IPC** defines the offense of sedition as:\n  > \"Whoever, by words, either spoken or written, or by signs, or by visible representation, or otherwise, brings or attempts to bring into hatred or contempt, or excites or attempts to excite disaffection towards, the Government established by law in India, shall be punished with imprisonment for life, or with imprisonment which may extend to three years, and shall also be liable to fine.\"\n\n- **Historical Context:**\n  - **1870s - 1900s:** The law was enacted to suppress political dissent and was used extensively during the Indian independence movement.\n  - **1950s - 1970s:** The law was used to silence political opposition and critics of the government.\n  - **1980s - 2000s:** The law was occasionally invoked, but its application was generally limited.\n\n- **Supreme Court Interpretations:**\n  - **Kedarnath Singh v. State of Bihar (1962):** The Supreme Court interpreted Section 124A to mean that the expression must be such as to create a clear and present danger of public disorder or to incite violence.\n  - **Balwant Singh v. State of Punjab (1990):** The Supreme Court further clarified that the expression must be such as to create a clear and present danger of public disorder or to incite violence.\n\n**Sources:**\n- Indian Penal Code, 1860 (Act V of 1860)\n- Kedarnath Singh v. State of Bihar, 1962\n- Balwant Singh v. State of Punjab, 1990",
+    "scores": {
+      "faithfulness": 4,
+      "answer_relevance": 5,
+      "citation_accuracy": 5,
+      "temporal_accuracy": 4,
+      "completeness": 4,
+      "hallucination_free": 5
+    },
+    "reasoning": "The answer is highly relevant and accurate, with a slight temporal inaccuracy due to the reference date being 2023-01-01 and the repeal happening in 2024. The information provided is comprehensive and well-cited."
+  },
+  {
+    "id": "T002",
+    "question": "What replaced IPC Section 302 on murder in the BNS?",
+    "system_answer": "It appears there is an issue with accessing the local database. Let's proceed by searching for the relevant information directly.\n\n### Replacement of IPC Section 302 on Murder in the BNS\n\nIPC Section 302 dealt with murder, which is defined as the unlawful killing of one human being by another with the intention to cause death. In the Bharatiya Nyaya Sanhita (BNS), the corresponding provision is BNS Section 302, which retains the essence of IPC Section 302 but may have some minor adjustments or clarifications.\n\n**IPC Section 302:**\n- **Definition:** Unlawful killing with the intention to cause death.\n- **Penalty:** Death or life imprisonment.\n\n**BNS Section 302:**\n- **Definition:** Essentially the same as IPC Section 302.\n- **Penalty:** Death or life imprisonment.\n\n**Sources:**\n- Bharatiya Nyaya Sanhita, 2024 (Act No. 45 of 2024)\n\nThe exact text and any minor changes can be accessed through the official legislative database or the relevant act document.",
+    "scores": {
+      "faithfulness": 3,
+      "answer_relevance": 4,
+      "citation_accuracy": 2,
+      "temporal_accuracy": 4,
+      "completeness": 3,
+      "hallucination_free": 4
+    },
+    "reasoning": "The answer is partially correct but lacks the specific information about the replacement by BNS Section 101 and the exact effective date. It also contains confusion between IPC Section 302 and BNS Section 302."
+  },
+  {
+    "id": "T003",
+    "question": "What is Article 21 of the Indian Constitution?",
+    "system_answer": "Article 21 of the Indian Constitution guarantees the **right to life and personal liberty**. No person shall be deprived of their life or personal liberty except according to procedure established by law.\n\n**Sources:**\n- The Constitution of India, Part III",
+    "scores": {
+      "faithfulness": 4,
+      "answer_relevance": 5,
+      "citation_accuracy": 5,
+      "temporal_accuracy": 5,
+      "completeness": 3,
+      "hallucination_free": 5
+    },
+    "reasoning": "The answer is faithful and relevant, with accurate citations and temporal accuracy, but lacks some of the expanded interpretations and is incomplete."
+  },
+  {
+    "id": "T004",
+    "question": "What were the changes to property rights under the 44th Amendment?",
+    "system_answer": "Given the technical issues with direct database access, I will attempt to provide the information based on general knowledge and available resources.\n\nThe 44th Amendment to the Constitution of India, enacted in 1978, made several changes to property rights. Key changes include:\n\n- **Abolition of Special Rights of Zamindars**: The amendment abolished the special rights of zamindars (landlords) that were granted under the Zamindari Abolition Acts of 1950 and 1955.\n- **Protection of Property Rights**: The amendment provided for the protection of property rights of individuals, which was a significant change from the earlier provisions that had been seen as infringing on property rights.\n\n**Sources:**\n- The Constitution of India, 44th Amendment Act, 1978 (Act No. 44 of 1978)\n- Various legal texts and commentaries on the 44th Amendment.",
+    "scores": {
+      "faithfulness": 2,
+      "answer_relevance": 3,
+      "citation_accuracy": 1,
+      "temporal_accuracy": 3,
+      "completeness": 2,
+      "hallucination_free": 4
+    },
+    "reasoning": "The answer is partially relevant but lacks accuracy and completeness. It does not correctly state the main change regarding the right to property and includes incorrect information about zamindars."
+  },
+  {
+    "id": "T005",
+    "question": "What is anticipatory bail under the CrPC?",
+    "system_answer": "[Agent error: 402 Client Error: Payment Required for url: https://router.huggingface.co/together/v1/chat/completions (Request ID: Root=1-69f72fd7-75931491778c25c3247b295b;9d04f9ca-ab38-44c5-9c0c-7e0bea8a3b9d)\n\nYou have depleted your monthly included credits. Purchase pre-paid credits to continue using Inference Providers. Alternatively, subscribe to PRO to get 20x more included usage.]",
+    "scores": {
+      "faithfulness": 1,
+      "answer_relevance": 1,
+      "citation_accuracy": 1,
+      "temporal_accuracy": 1,
+      "completeness": 1,
+      "hallucination_free": 1
+    },
+    "reasoning": "Agent returned error/no-data response (API credits or retrieval failure)"
+  }
+]

@@ -463,6 +463,12 @@ class TempLexChatAgent:
                 f"cross-domain results remain accessible. {scope.describe()}"
             )
 
+        from .status import push_status
+        import time
+
+        sys_len = len(self._system_prompt + scope_note)
+        push_status(session_id, f"Built context: {len(history)} prior turns, {sys_len} char system prompt")
+
         lc_messages: List[Any] = [SystemMessage(content=self._system_prompt + scope_note)]
 
         for msg in history:
@@ -486,17 +492,25 @@ class TempLexChatAgent:
         max_iterations = 8
         courtlistener_fetched = False
         assistant_text = ""
+        model_name = getattr(self._llm, "model", "LLM")
 
-        for _ in range(max_iterations):
+        for iteration in range(1, max_iterations + 1):
+            push_status(session_id, f"Calling {model_name} (pass {iteration}, {len(lc_messages)} messages)...")
+            t0 = time.time()
             try:
                 result = self._llm.invoke(lc_messages)
             except Exception as exc:
                 err_text = str(exc)
                 if "model_not_supported" in err_text or "not supported by any provider" in err_text:
                     if self._try_switch_model():
+                        push_status(session_id, "Model limit reached, switching model...")
                         continue
+                push_status(session_id, f"LLM Error: {err_text[:100]}")
                 raise
+            
+            elapsed = time.time() - t0
             assistant_text = getattr(result, "content", str(result))
+            push_status(session_id, f"LLM responded in {elapsed:.1f}s ({len(assistant_text)} chars)")
 
             json_match = re.search(r"```json\s*(.*?)\s*```", assistant_text, re.DOTALL)
 
@@ -507,10 +521,12 @@ class TempLexChatAgent:
                     tool_args = tool_request.get("args", {})
 
                     lc_messages.append(AIMessage(content=assistant_text))
-
-                    # Yield tool call event
                     yield {"type": "tool_call", "tool": tool_name, "input": str(tool_args)}
+                    
+                    args_str = json.dumps(tool_args)[:40] + "..." if len(json.dumps(tool_args)) > 40 else json.dumps(tool_args)
+                    push_status(session_id, f"Tool call: {tool_name}({args_str})")
 
+                    t0_tool = time.time()
                     tool_out = "Tool not found."
                     for t in TEMPLEX_TOOLS:
                         if t.name == tool_name:
@@ -519,14 +535,19 @@ class TempLexChatAgent:
                             except Exception as e:
                                 tool_out = f"Error executing tool: {e}"
                             break
+                    t_elapsed = time.time() - t0_tool
+
+                    tool_out_str = str(tool_out)
+                    preview = tool_out_str.replace("\n", " ")[:60] + "..." if len(tool_out_str) > 60 else tool_out_str
+                    push_status(session_id, f"← {tool_name} returned in {t_elapsed:.1f}s: {preview}")
 
                     tool_calls_history.append({
                         "tool": tool_name,
                         "input": str(tool_args),
-                        "output_preview": str(tool_out)[:100] + "..." if len(str(tool_out)) > 100 else str(tool_out)
+                        "output_preview": tool_out_str[:100] + "..." if len(tool_out_str) > 100 else tool_out_str
                     })
 
-                    if tool_name == "resolve_reference_tool" and "No matching provisions found" in str(tool_out):
+                    if tool_name == "resolve_reference_tool" and "No matching provisions found" in tool_out_str:
                         if not courtlistener_fetched:
                             courtlistener_fetched = True
                             observation = (
@@ -538,6 +559,7 @@ class TempLexChatAgent:
                                 "Do NOT attempt to answer yet. ONLY output the JSON tool call now."
                             )
                             lc_messages.append(HumanMessage(content=observation))
+                            push_status(session_id, "Local search failed. Routing to autonomous research.")
                             continue
                         else:
                             assistant_text = (
@@ -548,10 +570,12 @@ class TempLexChatAgent:
 
                     observation = f"Tool '{tool_name}' returned:\n{tool_out}\n\nBased on this, either use another tool, or provide your final answer."
                     lc_messages.append(HumanMessage(content=observation))
+                    push_status(session_id, f"Feeding {len(observation)} chars of tool output back to LLM...")
                     continue
                 except json.JSONDecodeError:
                     lc_messages.append(AIMessage(content=assistant_text))
                     lc_messages.append(HumanMessage(content="Your JSON was malformed. Please fix it and try again, or provide your final answer."))
+                    push_status(session_id, "Malformed JSON detected, requesting LLM fix...")
                     continue
             else:
                 break
@@ -561,23 +585,26 @@ class TempLexChatAgent:
                 "final answer to the user's question based on the information gathered so far. "
                 "Do NOT output any JSON. Write your final answer now."
             )))
+            push_status(session_id, f"Calling {model_name} (final pass)...")
+            t0 = time.time()
             try:
                 force_result = self._llm.invoke(lc_messages)
             except Exception as exc:
-                err_text = str(exc)
-                if "model_not_supported" in err_text or "not supported by any provider" in err_text:
-                    if self._try_switch_model():
-                        force_result = self._llm.invoke(lc_messages)
-                    else:
-                        raise
+                if self._try_switch_model():
+                    force_result = self._llm.invoke(lc_messages)
                 else:
                     raise
+            elapsed = time.time() - t0
             assistant_text = getattr(force_result, "content", str(force_result))
+            push_status(session_id, f"LLM responded in {elapsed:.1f}s ({len(assistant_text)} chars)")
+            
             if "```json" in assistant_text:
                 assistant_text = "I gathered information but was unable to synthesize a final answer. Please try rephrasing your question."
 
         # Apply output parser for better formatting
         # assistant_text = OutputParser.parse(assistant_text)
+        
+        push_status(session_id, f"Streaming final response ({len(assistant_text)} chars)...")
         
         # Stream the final text in chunks
         chunk_size = 12

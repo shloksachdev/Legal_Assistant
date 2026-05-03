@@ -57,7 +57,7 @@ export default function ChatInterface({ messages, isLoading, statusLogs = [], st
         <MessageBubble key={i} msg={msg} index={i} isLoading={isLoading} onSuggestionClick={onSuggestionClick} />
       ))}
 
-      {/* Typing & Status Log indicator */}
+      {/* ── PIPELINE ACTIVE panel ── */}
       {isLoading && (
         <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "6px" }}>
           <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--accent-blue)", textTransform: "uppercase", letterSpacing: "0.5px", padding: "0 4px" }}>
@@ -66,47 +66,98 @@ export default function ChatInterface({ messages, isLoading, statusLogs = [], st
           <div style={{
             background: "var(--bg-secondary)",
             border: "1px solid var(--border-default)",
-            borderRadius: "32px 32px 32px 8px",
-            padding: "16px 20px",
-            display: "flex",
-            flexDirection: "column",
-            gap: "8px",
-            minWidth: "250px",
+            borderRadius: "16px 16px 16px 4px",
+            padding: "0",
+            minWidth: "420px",
+            maxWidth: "560px",
+            overflow: "hidden",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.25)",
           }}>
-            {/* Elegant Status Logs */}
-            {statusLogs.length > 0 ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                {statusLogs.slice(-3).map((log, idx, arr) => (
-                  <div key={idx} style={{ 
-                    fontSize: "12px", 
-                    fontFamily: "monospace",
-                    color: idx === arr.length - 1 ? "var(--text-primary)" : "var(--text-muted)",
-                    opacity: idx === arr.length - 1 ? 1 : 0.6,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px",
-                    animation: idx === arr.length - 1 ? "fade-in 0.3s ease-out" : "none"
-                  }}>
-                    {idx === arr.length - 1 ? (
-                      <span className="spinner" style={{ width: "10px", height: "10px" }} />
-                    ) : (
-                      <span style={{ color: "var(--accent-green)", fontSize: "10px" }}>✓</span>
-                    )}
-                    {log}
-                  </div>
-                ))}
+            {/* Header bar */}
+            <div style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "10px 16px 8px 16px",
+              borderBottom: "1px solid var(--border-muted)",
+            }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px", flex: 1 }}>
+                <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-primary)", letterSpacing: "0.8px", textTransform: "uppercase" }}>
+                  {statusLogs.length > 0 ? "Pipeline Active" : "Connecting..."}
+                </span>
+                {/* Animated underline */}
+                <div style={{ height: "2px", width: "100%", background: "var(--border-muted)", borderRadius: "2px", overflow: "hidden" }}>
+                  <div style={{
+                    height: "100%", width: "40%",
+                    background: "linear-gradient(90deg, transparent, var(--accent-blue), transparent)",
+                    borderRadius: "2px",
+                    animation: "pipeline-scan 1.4s ease-in-out infinite",
+                  }} />
+                </div>
               </div>
-            ) : (
-              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                <span className="spinner" style={{ width: "14px", height: "14px" }} />
-                <span style={{ fontSize: "13px", color: "var(--text-muted)" }}>Reasoning with graph traversal...</span>
-              </div>
-            )}
+              {statusLogs.length > 0 && (
+                <span style={{ fontSize: "11px", color: "var(--text-muted)", fontWeight: 500, marginLeft: "12px", whiteSpace: "nowrap" }}>
+                  {statusLogs.length} step{statusLogs.length !== 1 ? "s" : ""}
+                </span>
+              )}
+            </div>
+
+            {/* Log lines */}
+            <div style={{
+              padding: "10px 14px 12px 14px",
+              display: "flex", flexDirection: "column", gap: "3px",
+              maxHeight: "260px", overflowY: "auto",
+            }}>
+              {statusLogs.length === 0 ? (
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "4px 0" }}>
+                  <span className="spinner" style={{ width: "12px", height: "12px", flexShrink: 0 }} />
+                  <span style={{ fontSize: "12px", fontFamily: "monospace", color: "var(--text-muted)" }}>
+                    Connecting to reasoning engine...
+                  </span>
+                </div>
+              ) : (
+                statusLogs.map((log, idx) => {
+                  const isLast = idx === statusLogs.length - 1;
+                  return (
+                    <div key={idx} style={{
+                      display: "flex", alignItems: "flex-start", gap: "8px",
+                      padding: "2px 0",
+                      opacity: isLast ? 1 : idx >= statusLogs.length - 6 ? 0.75 : 0.45,
+                      transition: "opacity 0.3s ease",
+                    }}>
+                      {/* Icon */}
+                      <span style={{ flexShrink: 0, marginTop: "1px", width: "14px", textAlign: "center" }}>
+                        {isLast ? (
+                          <span className="spinner" style={{ width: "10px", height: "10px", display: "inline-block" }} />
+                        ) : (
+                          <span style={{ fontSize: "10px", color: "var(--accent-green)" }}>✓</span>
+                        )}
+                      </span>
+                      {/* Text */}
+                      <span style={{
+                        fontSize: "12px",
+                        fontFamily: "monospace",
+                        color: isLast ? "var(--text-primary)" : "var(--text-secondary)",
+                        lineHeight: "1.4",
+                        wordBreak: "break-all",
+                      }}>
+                        {log}
+                      </span>
+                    </div>
+                  );
+                })
+              )}
+            </div>
           </div>
         </div>
       )}
 
       <div ref={bottomRef} />
+
+      <style>{`
+        @keyframes pipeline-scan {
+          0%   { transform: translateX(-100%); }
+          100% { transform: translateX(350%); }
+        }
+      `}</style>
     </div>
   );
 }

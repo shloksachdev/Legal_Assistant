@@ -147,7 +147,7 @@ async def chat(req: ChatRequest):
 @app.post("/api/chat/stream")
 async def chat_stream(req: ChatRequest):
     """Send a message and get a streaming response via SSE."""
-    async def event_generator():
+    def event_generator():
         try:
             for chunk in chat_agent.chat_stream(req.session_id, req.message):
                 yield f"data: {json.dumps(chunk)}\n\n"
