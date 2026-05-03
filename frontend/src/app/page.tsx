@@ -81,11 +81,8 @@ export default function Home() {
   });
   const [scope, setScope] = useState<{ reference_date: string; domains: string[]; jurisdictions: string[] } | null>(null);
   const [showScopeSelector, setShowScopeSelector] = useState(false);
-<<<<<<< HEAD
   const [statusLogs, setStatusLogs] = useState<string[]>([]);
-=======
   const [streamingText, setStreamingText] = useState<string>("");
->>>>>>> c81960aca48e26c630237297394ef10a34e2a639
 
   // Helpers for localStorage-backed chat list
   const STORAGE_KEY_SUMMARIES = "templex_chat_summaries";
@@ -207,13 +204,13 @@ export default function Home() {
           const updated = prevSummaries.map((c) =>
             c.id === sessionId
               ? {
-                  ...c,
-                  title:
-                    c.title === "New chat"
-                      ? (message.length > 60 ? message.slice(0, 60) + "…" : message)
-                      : c.title,
-                  updatedAt: now,
-                }
+                ...c,
+                title:
+                  c.title === "New chat"
+                    ? (message.length > 60 ? message.slice(0, 60) + "…" : message)
+                    : c.title,
+                updatedAt: now,
+              }
               : c
           );
           persistSummaries(updated);
@@ -227,9 +224,9 @@ export default function Home() {
     try {
       await fetch(`${API_BASE}/api/chat/status/clear/${sessionId}`, { method: "POST" });
     } catch { /* noop */ }
-    
+
     setStatusLogs([]);
-    
+
     // Poll for status every 500ms
     const intervalId = setInterval(async () => {
       try {
