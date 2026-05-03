@@ -2,6 +2,7 @@
 
 import React, { useRef, useEffect } from "react";
 import DiffViewer, { parseDiffBlock } from "./DiffViewer";
+import ProvenanceTimeline from "./ProvenanceTimeline";
 
 interface ToolCall {
   tool: string;
@@ -13,12 +14,16 @@ interface Message {
   role: "user" | "assistant";
   content: string;
   tool_calls?: ToolCall[];
+  suggestions?: string[];
+  timeline?: any;
 }
 
 interface ChatInterfaceProps {
   messages: Message[];
   isLoading: boolean;
+  statusLogs?: string[];
   streamingText?: string;
+  onSuggestionClick?: (suggestion: string) => void;
 }
 
 const TOOL_LABELS: Record<string, { label: string; icon: string; color: string }> = {
@@ -35,12 +40,12 @@ const TOOL_LABELS: Record<string, { label: string; icon: string; color: string }
   ingest_document_tool: { label: "Ingest", icon: "📥", color: "#8b5cf6" },
 };
 
-export default function ChatInterface({ messages, isLoading, streamingText }: ChatInterfaceProps) {
+export default function ChatInterface({ messages, isLoading, statusLogs = [], streamingText, onSuggestionClick }: ChatInterfaceProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isLoading, streamingText]);
+  }, [messages, isLoading, streamingText, statusLogs]);
 
   if (messages.length === 0 && !isLoading && !streamingText) {
     return <EmptyState />;
@@ -49,7 +54,7 @@ export default function ChatInterface({ messages, isLoading, streamingText }: Ch
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "16px", padding: "20px 0 12px 0", width: "100%" }}>
       {messages.map((msg, i) => (
-        <MessageBubble key={i} msg={msg} index={i} />
+        <MessageBubble key={i} msg={msg} index={i} isLoading={isLoading} onSuggestionClick={onSuggestionClick} />
       ))}
 
       {/* Streaming text */}
@@ -76,7 +81,7 @@ export default function ChatInterface({ messages, isLoading, streamingText }: Ch
         </div>
       )}
 
-      {/* Typing indicator */}
+      {/* Pipeline Status Indicator */}
       {isLoading && !streamingText && (
         <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "6px" }}>
           <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--accent-blue)", textTransform: "uppercase", letterSpacing: "0.5px", padding: "0 4px" }}>
@@ -86,13 +91,96 @@ export default function ChatInterface({ messages, isLoading, streamingText }: Ch
             background: "var(--bg-secondary)",
             border: "1px solid var(--border-default)",
             borderRadius: "32px 32px 32px 8px",
-            padding: "14px 20px",
+            padding: "16px 20px",
             display: "flex",
-            alignItems: "center",
+            flexDirection: "column",
             gap: "6px",
+            minWidth: "320px",
+            maxWidth: "500px",
           }}>
-            <span className="spinner" style={{ width: "14px", height: "14px" }} />
-            <span style={{ fontSize: "13px", color: "var(--text-muted)" }}>Reasoning with graph traversal...</span>
+            {/* Pipeline header */}
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: "4px",
+            }}>
+              <span style={{
+                fontSize: "10px",
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "1px",
+                color: "var(--accent-blue)",
+              }}>
+                {statusLogs.length > 0 ? "Pipeline Active" : "Initializing"}
+              </span>
+              <span style={{
+                fontSize: "10px",
+                fontFamily: "monospace",
+                color: "var(--text-muted)",
+              }}>
+                {statusLogs.length > 0 ? `${statusLogs.length} step${statusLogs.length !== 1 ? "s" : ""}` : ""}
+              </span>
+            </div>
+
+            {/* Progress bar */}
+            <div style={{
+              height: "2px",
+              background: "var(--border-muted)",
+              borderRadius: "1px",
+              overflow: "hidden",
+              marginBottom: "4px",
+            }}>
+              <div style={{
+                height: "100%",
+                background: "linear-gradient(90deg, var(--accent-blue), var(--accent-purple, #bc8cff))",
+                borderRadius: "1px",
+                animation: "pulse-width 2s ease-in-out infinite",
+              }} />
+            </div>
+
+            {/* Status log entries */}
+            {statusLogs.length > 0 ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+                {statusLogs.map((log, idx) => {
+                  const isLatest = idx === statusLogs.length - 1;
+                  return (
+                    <div key={`${idx}-${log}`} style={{
+                      fontSize: "12px",
+                      fontFamily: "'SF Mono', 'Fira Code', monospace",
+                      color: isLatest ? "var(--text-primary)" : "var(--text-muted)",
+                      opacity: isLatest ? 1 : 0.55,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      padding: "2px 0",
+                      animation: isLatest ? "fade-in 0.3s ease-out" : "none",
+                      transition: "opacity 0.3s ease, color 0.3s ease",
+                    }}>
+                      {isLatest ? (
+                        <span className="spinner" style={{ width: "10px", height: "10px", flexShrink: 0 }} />
+                      ) : (
+                        <span style={{ color: "var(--accent-green)", fontSize: "11px", flexShrink: 0, width: "10px", textAlign: "center" }}>✓</span>
+                      )}
+                      <span style={{
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}>
+                        {log}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "2px 0" }}>
+                <span className="spinner" style={{ width: "12px", height: "12px" }} />
+                <span style={{ fontSize: "12px", fontFamily: "'SF Mono', 'Fira Code', monospace", color: "var(--text-muted)" }}>
+                  Connecting to reasoning engine...
+                </span>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -102,7 +190,7 @@ export default function ChatInterface({ messages, isLoading, streamingText }: Ch
   );
 }
 
-function MessageBubble({ msg, index }: { msg: Message; index: number }) {
+function MessageBubble({ msg, index, isLoading, onSuggestionClick }: { msg: Message; index: number; isLoading: boolean; onSuggestionClick?: (s: string) => void }) {
   const isUser = msg.role === "user";
 
   return (
@@ -168,6 +256,56 @@ function MessageBubble({ msg, index }: { msg: Message; index: number }) {
               </span>
             );
           })}
+        </div>
+      )}
+
+      {/* Provenance Timeline */}
+      {msg.timeline && msg.timeline.events && msg.timeline.events.length > 0 && (
+        <div style={{ maxWidth: "90%", marginTop: "4px" }}>
+          <ProvenanceTimeline
+            events={msg.timeline.events}
+            workTitle={msg.timeline.work_title}
+            workId={msg.timeline.work_id}
+            totalVersions={msg.timeline.total_versions}
+          />
+        </div>
+      )}
+
+      {/* Follow-up Suggestions */}
+      {!isUser && msg.suggestions && msg.suggestions.length > 0 && !isLoading && (
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", padding: "0 4px", maxWidth: "90%" }}>
+          {msg.suggestions.map((s, j) => (
+            <button
+              key={j}
+              onClick={() => onSuggestionClick?.(s)}
+              style={{
+                background: "var(--bg-tertiary)",
+                border: "1px solid var(--border-default)",
+                borderRadius: "9999px",
+                padding: "6px 14px",
+                fontSize: "12px",
+                color: "var(--text-secondary)",
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                maxWidth: "280px",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = "var(--accent-blue)";
+                e.currentTarget.style.color = "var(--accent-blue)";
+                e.currentTarget.style.background = "var(--accent-blue-muted)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = "var(--border-default)";
+                e.currentTarget.style.color = "var(--text-secondary)";
+                e.currentTarget.style.background = "var(--bg-tertiary)";
+              }}
+            >
+              ✨ {s}
+            </button>
+          ))}
         </div>
       )}
     </div>

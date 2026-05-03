@@ -338,9 +338,51 @@ class TempLexChatAgent:
         history.append({"role": "user", "content": message})
         history.append(assistant_msg)
 
+        # ── Generate follow-up suggestions ────────────────────────────────
+        suggestions = []
+        try:
+            push_status(session_id, "Generating follow-up suggestions...")
+            suggest_messages = [
+                SystemMessage(content=(
+                    "Based on the conversation, generate exactly 3 short follow-up questions "
+                    "the user might ask next. Output ONLY a JSON array of 3 strings, nothing else. "
+                    "Example: [\"What replaced this law?\", \"Show the full timeline\", \"Compare with BNS\"]"
+                )),
+                HumanMessage(content=f"User asked: {message}\n\nAssistant answered: {assistant_text[:500]}"),
+            ]
+            suggest_result = self._invoke_with_retry(suggest_messages)
+            suggest_text = getattr(suggest_result, "content", "")
+            # Extract JSON array from response
+            arr_match = re.search(r'\[.*?\]', suggest_text, re.DOTALL)
+            if arr_match:
+                parsed = json.loads(arr_match.group())
+                if isinstance(parsed, list):
+                    suggestions = [str(s).strip() for s in parsed[:3] if s]
+        except Exception as e:
+            print(f"  [TempLex] Suggestion generation failed (non-critical): {e}")
+
+        # ── Collect structured timeline data from tool calls ──────────────
+        timeline = None
+        for tc in tool_calls_history:
+            if tc["tool"] == "trace_history_tool":
+                # Re-run to get structured data (the tool output in history is text)
+                try:
+                    from .actions.causality import trace_causality
+                    trace_args = tc.get("input", "{}")
+                    if isinstance(trace_args, str):
+                        trace_args = json.loads(trace_args.replace("'", '"'))
+                    work_id = trace_args.get("work_id", "")
+                    if work_id:
+                        timeline = trace_causality(work_id)
+                except Exception:
+                    pass
+                break
+
         return {
             "response": assistant_text,
             "tool_calls": tool_calls_history,
+            "suggestions": suggestions,
+            "timeline": timeline,
         }
 
     # ── Streaming Chat API ------------------------------------------------
