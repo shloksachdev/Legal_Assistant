@@ -367,7 +367,7 @@ class TempLexChatAgent:
                 assistant_text = "I gathered information but was unable to synthesize a final answer. Please try rephrasing your question."
 
         # Apply output parser for better formatting
-        assistant_text = OutputParser.parse(assistant_text)
+        # assistant_text = OutputParser.parse(assistant_text)
         
         assistant_msg: ChatMessage = {
             "role": "assistant",
@@ -572,7 +572,7 @@ class TempLexChatAgent:
                 assistant_text = "I gathered information but was unable to synthesize a final answer. Please try rephrasing your question."
 
         # Apply output parser for better formatting
-        assistant_text = OutputParser.parse(assistant_text)
+        # assistant_text = OutputParser.parse(assistant_text)
         
         # Stream the final text in chunks
         chunk_size = 12
