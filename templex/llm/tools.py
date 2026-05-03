@@ -26,10 +26,12 @@ def set_session_state(session_id: str, scope) -> None:
     _current_session_id = session_id
 
 
-def set_session_scope(scope) -> None:
-    """Alias for setting scope only (maintains compatibility with chat_stream)."""
-    global _current_scope
+def set_session_scope(scope, session_id: str = "") -> None:
+    """Set scope and optionally session_id for the current turn."""
+    global _current_scope, _current_session_id
     _current_scope = scope
+    if session_id:
+        _current_session_id = session_id
 
 
 def _get_scope():

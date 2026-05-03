@@ -453,7 +453,7 @@ class TempLexChatAgent:
         scope   = session.get("scope")
 
         from .llm.tools import set_session_scope
-        set_session_scope(scope)
+        set_session_scope(scope, session_id=session_id)
 
         scope_note = ""
         if scope:
