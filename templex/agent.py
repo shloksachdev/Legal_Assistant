@@ -35,6 +35,44 @@ class ChatMessage(TypedDict, total=False):
     tool_calls: List[ToolCall]
 
 
+class OutputParser:
+    """Clean and format LLM output for better readability."""
+    
+    @staticmethod
+    def parse(text: str) -> str:
+        """
+        Clean output by:
+        - Normalizing markdown headers
+        - Adding consistent spacing between sections
+        - Removing trailing/leading whitespace
+        - Removing hash separators used as dividers
+        """
+        # Remove excessive hashes (#### and higher to ##)
+        text = re.sub(r'^#{4,}', '##', text, flags=re.MULTILINE)
+        
+        # Add blank lines before headers for better spacing
+        text = re.sub(r'\n(#{1,3} )', r'\n\n\1', text)
+        
+        # Normalize multiple blank lines to max 2
+        text = re.sub(r'\n{3,}', '\n\n', text)
+        
+        # Ensure proper spacing after code blocks
+        text = re.sub(r'```\n([^\n])', r'```\n\n\1', text)
+        
+        # Clean up heading spacing (ensure blank line after headers)
+        text = re.sub(r'(#{1,3} .+)\n([^\n])', r'\1\n\n\2', text)
+        
+        # Remove hash symbols used as separators (---# or #---)
+        text = re.sub(r'\n\-{3,}#+\n', '\n\n', text)
+        text = re.sub(r'\n#+\-{3,}\n', '\n\n', text)
+        
+        # Remove leading/trailing hash separators
+        text = re.sub(r'^#+\s*\n', '', text)
+        text = re.sub(r'\n\s*#+$', '', text)
+        
+        return text.strip()
+
+
 class TempLexChatAgent:
     """Lightweight in‑memory chat agent with session history."""
 
@@ -328,6 +366,9 @@ class TempLexChatAgent:
             if "```json" in assistant_text:
                 assistant_text = "I gathered information but was unable to synthesize a final answer. Please try rephrasing your question."
 
+        # Apply output parser for better formatting
+        assistant_text = OutputParser.parse(assistant_text)
+        
         assistant_msg: ChatMessage = {
             "role": "assistant",
             "content": assistant_text,
@@ -530,6 +571,9 @@ class TempLexChatAgent:
             if "```json" in assistant_text:
                 assistant_text = "I gathered information but was unable to synthesize a final answer. Please try rephrasing your question."
 
+        # Apply output parser for better formatting
+        assistant_text = OutputParser.parse(assistant_text)
+        
         # Stream the final text in chunks
         chunk_size = 12
         for i in range(0, len(assistant_text), chunk_size):
