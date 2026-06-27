@@ -8,9 +8,7 @@ venv/
 env/
 ENV/
 
-# Local databases and cache
-kuzu_data/
-kuzu_data.wal
+# Local databases and cache (tracked)
 # Environment files (keep example)
 .env
 .env.*
@@ -55,8 +53,7 @@ venv/
 .venv/
 env/
 
-# KuzuDB data
-kuzu_data/
+# KuzuDB data (tracked)
 
 # Environment variables
 .env
@@ -84,5 +81,3 @@ test_*.py
 *test.py
 scratch/
 test_*.log
-kuzu_data
-kuzu_data.wal

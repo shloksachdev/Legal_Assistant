@@ -4,32 +4,42 @@ Generates 384-dimensional dense vector embeddings for legal text.
 Lazy-loads the model on first use to conserve startup memory.
 """
 
+import os
+import requests
 import numpy as np
 from templex.config import EMBEDDING_MODEL_NAME
 
 class EmbeddingEngine:
-    """Singleton wrapper around sentence-transformers for CPU inference."""
-
-    _model = None
+    """Wrapper around HuggingFace Inference API to conserve RAM on free tiers."""
 
     @classmethod
-    def _load_model(cls):
-        if cls._model is None:
-            from sentence_transformers import SentenceTransformer
-            cls._model = SentenceTransformer(EMBEDDING_MODEL_NAME, device="cpu")
-        return cls._model
+    def _get_headers(cls):
+        token = os.getenv("HF_TOKEN")
+        if not token:
+            raise ValueError("HF_TOKEN environment variable is required for embeddings.")
+        return {"Authorization": f"Bearer {token}"}
+
+    @classmethod
+    def _call_api(cls, payload: dict) -> list:
+        api_url = f"https://api-inference.huggingface.co/pipeline/feature-extraction/sentence-transformers/{EMBEDDING_MODEL_NAME}"
+        response = requests.post(api_url, headers=cls._get_headers(), json=payload)
+        if response.status_code != 200:
+            raise RuntimeError(f"HuggingFace API Error ({response.status_code}): {response.text}")
+        return response.json()
 
     @classmethod
     def encode_batch(cls, texts: list[str]) -> np.ndarray:
         """Encode a list of texts into embeddings. Returns shape (N, 384)."""
-        model = cls._load_model()
-        return model.encode(texts, show_progress_bar=False, convert_to_numpy=True)
+        if not texts:
+            return np.array([])
+        results = cls._call_api({"inputs": texts})
+        return np.array(results)
 
     @classmethod
     def encode_query(cls, text: str) -> np.ndarray:
         """Encode a single query string. Returns shape (384,)."""
-        model = cls._load_model()
-        return model.encode(text, show_progress_bar=False, convert_to_numpy=True)
+        results = cls._call_api({"inputs": text})
+        return np.array(results)
 
     @classmethod
     def cosine_similarity(cls, a: np.ndarray, b: np.ndarray) -> float:

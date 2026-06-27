@@ -3,7 +3,7 @@ services:
     name: templex-backend
     env: python
     plan: free
-    buildCommand: "cd frontend && npm install && npm run build && cd .. && pip install -r requirements.txt && python main.py --seed"
+    buildCommand: "cd frontend && npm install && npm run build && cd .. && pip install -r requirements.txt"
     startCommand: "uvicorn api.server:app --host 0.0.0.0 --port $PORT"
     envVars:
       - key: HF_TOKEN
