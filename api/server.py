@@ -422,6 +422,7 @@ def _count(conn, query: str) -> int:
 import os
 from fastapi.staticfiles import StaticFiles
 
-# Mount the static Next.js export if it exists
-if os.path.exists("frontend/out"):
-    app.mount("/", StaticFiles(directory="frontend/out", html=True), name="frontend")
+# Mount the static Next.js export
+base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+out_dir = os.path.join(base_dir, "frontend", "out")
+app.mount("/", StaticFiles(directory=out_dir, html=True), name="frontend")
