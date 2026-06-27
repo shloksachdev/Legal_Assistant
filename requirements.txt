@@ -3,7 +3,6 @@
 kuzu>=0.8.0
 
 # CPU-optimized embeddings
-sentence-transformers>=2.2.0
 numpy>=1.24.0
 
 # LangChain agent + LLM (Hugging Face / Llama)
