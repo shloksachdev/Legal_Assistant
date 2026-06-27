@@ -2,6 +2,8 @@
 
 **Deterministic, CPU-Optimized Temporal Legal Reasoning Agent**
 
+🚀 **Live Deployment:** [https://templex-backend.onrender.com](https://templex-backend.onrender.com)
+
 A full-stack implementation of the SAT-Graph RAG framework with an LRMoo-inspired ontology, embedded KuzuDB graph database, and zero-cost LLM orchestration.
 
 ## Architecture
