@@ -14,7 +14,7 @@ Endpoints:
 """
 
 import json
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -35,9 +35,12 @@ app = FastAPI(
     version="0.3.0",
 )
 
+import os
+CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -135,21 +138,33 @@ async def get_scope_options():
 
 
 @app.post("/api/chat")
-async def chat(req: ChatRequest):
+async def chat(req: ChatRequest, x_hf_token: str | None = Header(None)):
     """Send a message and get a conversational response."""
+    history = chat_agent.get_history(req.session_id)
+    user_msg_count = sum(1 for m in history if m.get("role") == "user")
+    
+    if user_msg_count >= 3 and not x_hf_token:
+        raise HTTPException(status_code=403, detail="Free limit reached. Please provide a HuggingFace API key.")
+
     try:
-        result = chat_agent.chat(req.session_id, req.message)
+        result = chat_agent.chat(req.session_id, req.message, custom_token=x_hf_token)
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/api/chat/stream")
-async def chat_stream(req: ChatRequest):
+async def chat_stream(req: ChatRequest, x_hf_token: str | None = Header(None)):
     """Send a message and get a streaming response via SSE."""
+    history = chat_agent.get_history(req.session_id)
+    user_msg_count = sum(1 for m in history if m.get("role") == "user")
+    
+    if user_msg_count >= 3 and not x_hf_token:
+        raise HTTPException(status_code=403, detail="Free limit reached. Please provide a HuggingFace API key.")
+
     def event_generator():
         try:
-            for chunk in chat_agent.chat_stream(req.session_id, req.message):
+            for chunk in chat_agent.chat_stream(req.session_id, req.message, custom_token=x_hf_token):
                 yield f"data: {json.dumps(chunk)}\n\n"
         except Exception as e:
             yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"

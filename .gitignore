@@ -80,5 +80,10 @@ frontend/out/
 .pytest_cache/
 htmlcov/
 .coverage
+tests/
+test_*.py
+*test.py
+scratch/
+test_*.log
 kuzu_data
 kuzu_data.wal

@@ -181,22 +181,33 @@ class TempLexChatAgent:
                 "HF_TOKEN is not set. Add it to .env and restart the backend, then try again."
             )
 
-    def _build_llm(self, model_id: str) -> ChatHuggingFace:
+    def _build_llm(self, model_id: str, custom_token: str | None = None) -> ChatHuggingFace:
+        token = custom_token or self._hf_token
+        if not token:
+            raise RuntimeError("HF_TOKEN is not set.")
         base_llm = HuggingFaceEndpoint(
             repo_id=model_id,
-            huggingfacehub_api_token=self._hf_token,
+            huggingfacehub_api_token=token,
             max_new_tokens=512,
             temperature=0.2,
             timeout=45,
         )
         return ChatHuggingFace(llm=base_llm)
 
-    def _try_switch_model(self) -> bool:
+    def _get_current_llm(self, custom_token: str | None = None) -> ChatHuggingFace:
+        if custom_token:
+            return self._build_llm(self._model_candidates[self._current_model_idx], custom_token)
+        self._ensure_llm()
+        return self._llm
+
+    def _try_switch_model(self, custom_token: str | None = None) -> ChatHuggingFace | None:
         if self._current_model_idx + 1 >= len(self._model_candidates):
-            return False
+            return None
         self._current_model_idx += 1
-        self._llm = self._build_llm(self._model_candidates[self._current_model_idx])
-        return True
+        if not custom_token:
+            self._llm = self._build_llm(self._model_candidates[self._current_model_idx])
+            return self._llm
+        return self._build_llm(self._model_candidates[self._current_model_idx], custom_token)
 
     # ── Session management -------------------------------------------------
     def create_session(self, scope: "QueryScope | None" = None) -> str:
@@ -215,12 +226,12 @@ class TempLexChatAgent:
         return list(session.get("history", []))
 
     # ── Chat API -----------------------------------------------------------
-    def chat(self, session_id: str, message: str) -> Dict[str, Any]:
+    def chat(self, session_id: str, message: str, custom_token: str | None = None) -> Dict[str, Any]:
         """Send a message in a session and get the model response."""
         if not session_id:
             raise ValueError("session_id is required")
 
-        self._ensure_llm()
+        current_llm = self._get_current_llm(custom_token)
 
         if session_id not in self._sessions:
             self._sessions[session_id] = {"history": [], "scope": None}
@@ -230,8 +241,8 @@ class TempLexChatAgent:
         scope   = session.get("scope")  # QueryScope | None
 
         # Inject scope into tool layer so all tools use it automatically
-        from .llm.tools import set_session_state
-        set_session_state(session_id, scope)
+        from .llm.tools import set_session_scope
+        set_session_scope(scope, session_id=session_id)
         push_status(session_id, "Processing prompt...")
 
         # Build scope-aware system prompt suffix
@@ -275,11 +286,13 @@ class TempLexChatAgent:
         for _ in range(max_iterations):
             # Call the LLM
             try:
-                result = self._llm.invoke(lc_messages)
+                result = current_llm.invoke(lc_messages)
             except Exception as exc:
                 err_text = str(exc)
                 if "model_not_supported" in err_text or "not supported by any provider" in err_text:
-                    if self._try_switch_model():
+                    new_llm = self._try_switch_model(custom_token)
+                    if new_llm:
+                        current_llm = new_llm
                         continue
                 raise
             
@@ -365,7 +378,7 @@ class TempLexChatAgent:
                 "final answer to the user's question based on the information gathered so far. "
                 "Do NOT output any JSON. Write your final answer now."
             )))
-            force_result = self._llm.invoke(lc_messages)
+            force_result = current_llm.invoke(lc_messages)
             assistant_text = getattr(force_result, "content", str(force_result))
             # If it's still a JSON tool call somehow, fall back gracefully
             if "```json" in assistant_text:
@@ -432,7 +445,7 @@ class TempLexChatAgent:
         }
 
     # ── Streaming Chat API ------------------------------------------------
-    def chat_stream(self, session_id: str, message: str):
+    def chat_stream(self, session_id: str, message: str, custom_token: str | None = None):
         """Generator version of chat() that yields chunks for SSE streaming.
 
         Yields dicts with:
@@ -443,7 +456,7 @@ class TempLexChatAgent:
         if not session_id:
             raise ValueError("session_id is required")
 
-        self._ensure_llm()
+        current_llm = self._get_current_llm(custom_token)
 
         if session_id not in self._sessions:
             self._sessions[session_id] = {"history": [], "scope": None}
@@ -492,17 +505,19 @@ class TempLexChatAgent:
         max_iterations = 8
         courtlistener_fetched = False
         assistant_text = ""
-        model_name = getattr(self._llm, "model", "LLM")
+        model_name = getattr(current_llm, "model", "LLM")
 
         for iteration in range(1, max_iterations + 1):
             push_status(session_id, f"Calling {model_name} (pass {iteration}, {len(lc_messages)} messages)...")
             t0 = time.time()
             try:
-                result = self._llm.invoke(lc_messages)
+                result = current_llm.invoke(lc_messages)
             except Exception as exc:
                 err_text = str(exc)
                 if "model_not_supported" in err_text or "not supported by any provider" in err_text:
-                    if self._try_switch_model():
+                    new_llm = self._try_switch_model(custom_token)
+                    if new_llm:
+                        current_llm = new_llm
                         push_status(session_id, "Model limit reached, switching model...")
                         continue
                 push_status(session_id, f"LLM Error: {err_text[:100]}")
@@ -588,10 +603,12 @@ class TempLexChatAgent:
             push_status(session_id, f"Calling {model_name} (final pass)...")
             t0 = time.time()
             try:
-                force_result = self._llm.invoke(lc_messages)
+                force_result = current_llm.invoke(lc_messages)
             except Exception as exc:
-                if self._try_switch_model():
-                    force_result = self._llm.invoke(lc_messages)
+                new_llm = self._try_switch_model(custom_token)
+                if new_llm:
+                    current_llm = new_llm
+                    force_result = current_llm.invoke(lc_messages)
                 else:
                     raise
             elapsed = time.time() - t0

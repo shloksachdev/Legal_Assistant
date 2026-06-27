@@ -19,13 +19,6 @@ _current_scope = None   # QueryScope | None
 _current_session_id = "" # str
 
 
-def set_session_state(session_id: str, scope) -> None:
-    """Called by TempLexChatAgent before each tool execution turn."""
-    global _current_scope, _current_session_id
-    _current_scope = scope
-    _current_session_id = session_id
-
-
 def set_session_scope(scope, session_id: str = "") -> None:
     """Set scope and optionally session_id for the current turn."""
     global _current_scope, _current_session_id

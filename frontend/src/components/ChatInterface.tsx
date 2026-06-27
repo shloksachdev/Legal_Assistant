@@ -57,8 +57,32 @@ export default function ChatInterface({ messages, isLoading, statusLogs = [], st
         <MessageBubble key={i} msg={msg} index={i} isLoading={isLoading} onSuggestionClick={onSuggestionClick} />
       ))}
 
-      {/* ── PIPELINE ACTIVE panel ── */}
-      {isLoading && (
+      {/* Streaming text */}
+      {streamingText && (
+        <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "6px" }}>
+          <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--accent-blue)", textTransform: "uppercase", letterSpacing: "0.5px", padding: "0 4px" }}>
+            TempLex
+          </span>
+          <div style={{
+            maxWidth: "90%",
+            background: "var(--bg-secondary)",
+            border: "1px solid var(--border-default)",
+            borderRadius: "32px 32px 32px 8px",
+            padding: "12px 18px",
+          }}>
+            <div className="markdown-body" dangerouslySetInnerHTML={{ __html: renderMarkdown(streamingText) }} />
+            <span style={{
+              display: "inline-block", width: "8px", height: "16px",
+              background: "var(--accent-blue)",
+              animation: "blink 1s step-end infinite",
+              marginLeft: "2px", verticalAlign: "bottom", borderRadius: "1px",
+            }} />
+          </div>
+        </div>
+      )}
+
+      {/* Pipeline Status Indicator */}
+      {isLoading && !streamingText && (
         <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "6px" }}>
           <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--accent-blue)", textTransform: "uppercase", letterSpacing: "0.5px", padding: "0 4px" }}>
             TempLex
@@ -66,12 +90,13 @@ export default function ChatInterface({ messages, isLoading, statusLogs = [], st
           <div style={{
             background: "var(--bg-secondary)",
             border: "1px solid var(--border-default)",
-            borderRadius: "16px 16px 16px 4px",
-            padding: "0",
-            minWidth: "420px",
-            maxWidth: "560px",
-            overflow: "hidden",
-            boxShadow: "0 8px 32px rgba(0,0,0,0.25)",
+            borderRadius: "32px 32px 32px 8px",
+            padding: "16px 20px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "6px",
+            minWidth: "320px",
+            maxWidth: "500px",
           }}>
             {/* Header bar */}
             <div style={{

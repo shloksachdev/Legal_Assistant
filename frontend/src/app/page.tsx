@@ -7,6 +7,7 @@ import ChatInterface from "@/components/ChatInterface";
 import ChatInput from "@/components/QueryPanel";
 import ScopeSelector from "@/components/ScopeSelector";
 import InteractiveGraph from "@/components/InteractiveGraph";
+import { SettingsModal } from "@/components/SettingsModal";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
@@ -83,6 +84,7 @@ export default function Home() {
   const [showScopeSelector, setShowScopeSelector] = useState(false);
   const [statusLogs, setStatusLogs] = useState<string[]>([]);
   const [streamingText, setStreamingText] = useState<string>("");
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
 
   // Helpers for localStorage-backed chat list
   const STORAGE_KEY_SUMMARIES = "templex_chat_summaries";
@@ -189,6 +191,13 @@ export default function Home() {
       return;
     }
 
+    const userMsgCount = messages.filter(m => m.role === "user").length;
+    const hfToken = typeof window !== "undefined" ? window.localStorage.getItem("hfToken") : null;
+    if (userMsgCount >= 3 && !hfToken) {
+      setShowSettingsModal(true);
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     setStreamingText("");
@@ -239,21 +248,39 @@ export default function Home() {
     }, 500);
 
     try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (hfToken) {
+        headers["X-HF-Token"] = hfToken;
+      }
+
       // Try streaming first
       const res = await fetch(`${API_BASE}/api/chat/stream`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ session_id: sessionId, message }),
       });
 
       if (!res.ok || !res.body) {
+        if (res.status === 403) {
+          setShowSettingsModal(true);
+          setIsLoading(false);
+          setMessages((prev) => prev.slice(0, -1));
+          return;
+        }
+
         // Fall back to non-streaming
         const fallbackRes = await fetch(`${API_BASE}/api/chat`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers,
           body: JSON.stringify({ session_id: sessionId, message }),
         });
         if (!fallbackRes.ok) {
+          if (fallbackRes.status === 403) {
+            setShowSettingsModal(true);
+            setIsLoading(false);
+            setMessages((prev) => prev.slice(0, -1));
+            return;
+          }
           const err = await fallbackRes.json().catch(() => ({}));
           throw new Error(err.detail || `Error: ${fallbackRes.status}`);
         }
@@ -471,6 +498,11 @@ export default function Home() {
 
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column", background: "var(--bg-primary)" }}>
+      <SettingsModal 
+        open={showSettingsModal} 
+        onOpenChange={setShowSettingsModal} 
+        enforced={messages.filter(m => m.role === "user").length >= 3} 
+      />
       {/* ── Header ─────────────────────────────────────────────── */}
       <header className="glass-card" style={{
         borderTop: "none",

@@ -60,8 +60,8 @@ SCOPE_BOOST_JURISDICTION = 0.08   # Work jurisdiction matches user's selection
 MAX_SEARCH_QUERIES = 5
 MAX_INGEST_PER_TURN = 3
 CONFIDENCE_THRESHOLD = 0.65
-# ─── High-Confidence Research Pipeline ────────────────────────────────────
-# Used by the autonomous ingestion loop (fetch_indian_cases_tool / research_tool).
+
+# ─── High-Confidence Research Pipeline (legacy/tools.py aliases) ────────────
 INGESTION_CONFIDENCE_THRESHOLD = 0.65  # Min cosine+boost score to proceed with ingestion
 INGESTION_MAX_QUERIES     = 5          # Number of speculative query variants to generate
 INGESTION_MAX_SNIPPETS    = 50         # Max metadata snippets across all queries
