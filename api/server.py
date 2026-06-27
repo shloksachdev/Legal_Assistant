@@ -417,3 +417,11 @@ def _count(conn, query: str) -> int:
     if result.has_next():
         return result.get_next()[0]
     return 0
+
+
+import os
+from fastapi.staticfiles import StaticFiles
+
+# Mount the static Next.js export if it exists
+if os.path.exists("frontend/out"):
+    app.mount("/", StaticFiles(directory="frontend/out", html=True), name="frontend")

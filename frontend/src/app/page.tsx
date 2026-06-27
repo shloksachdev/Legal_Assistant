@@ -9,7 +9,9 @@ import ScopeSelector from "@/components/ScopeSelector";
 import InteractiveGraph from "@/components/InteractiveGraph";
 import { SettingsModal } from "@/components/SettingsModal";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL !== undefined 
+  ? process.env.NEXT_PUBLIC_API_URL 
+  : "http://127.0.0.1:8000";
 
 interface ToolCall {
   tool: string;
