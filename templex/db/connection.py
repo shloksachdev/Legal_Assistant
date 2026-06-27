@@ -14,9 +14,9 @@ class KuzuConnection:
     @classmethod
     def get_db(cls) -> kuzu.Database:
         if cls._db is None:
-            # KuzuDB v0.11+ manages its own directory creation
-            DB_DIR.parent.mkdir(parents=True, exist_ok=True)
-            cls._db = kuzu.Database(str(DB_DIR))
+            # KuzuDB defaults to 80% of system RAM. On Render's 512MB free tier,
+            # this causes instant OOM kills. Limit to 128MB.
+            cls._db = kuzu.Database(str(DB_DIR), buffer_pool_size=128 * 1024 * 1024)
         return cls._db
 
     @classmethod
