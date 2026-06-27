@@ -74,7 +74,6 @@ Thumbs.db
 # Node
 frontend/node_modules/
 frontend/.next/
-frontend/out/
 
 # Testing
 .pytest_cache/
