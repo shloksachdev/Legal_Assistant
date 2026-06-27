@@ -418,11 +418,43 @@ def _count(conn, query: str) -> int:
         return result.get_next()[0]
     return 0
 
-
 import os
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
-# Mount the static Next.js export
+# Mount the static Next.js export securely
 base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 out_dir = os.path.join(base_dir, "frontend", "out")
-app.mount("/", StaticFiles(directory=out_dir, html=True), name="frontend")
+
+# 1. Serve static assets directly via StaticFiles for high performance
+assets_dir = os.path.join(out_dir, "_next")
+if os.path.exists(assets_dir):
+    app.mount("/_next", StaticFiles(directory=assets_dir), name="next_assets")
+
+# 2. Catch-all route to serve HTML pages and act as an SPA fallback
+@app.get("/{full_path:path}")
+async def serve_frontend(full_path: str):
+    # Don't intercept API calls if they somehow missed previous routes
+    if full_path.startswith("api/"):
+        raise HTTPException(status_code=404, detail="API route not found")
+        
+    # Prevent directory traversal attacks
+    if ".." in full_path:
+        raise HTTPException(status_code=400, detail="Invalid path")
+
+    # 1. Check exact file match (e.g. favicon.ico, file.svg)
+    file_path = os.path.join(out_dir, full_path)
+    if os.path.isfile(file_path):
+        return FileResponse(file_path)
+    
+    # 2. Check Next.js .html suffix (e.g. /login -> login.html)
+    html_path = file_path + ".html"
+    if os.path.isfile(html_path):
+        return FileResponse(html_path)
+
+    # 3. Fallback to index.html (SPA default or / root)
+    index_path = os.path.join(out_dir, "index.html")
+    if os.path.isfile(index_path):
+        return FileResponse(index_path)
+
+    raise HTTPException(status_code=404, detail="Frontend not built or not found")
